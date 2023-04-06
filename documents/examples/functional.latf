@@ -1,0 +1,55 @@
+int head([(int) -> int] list) {
+    return list(0);
+}
+
+[(int) -> int] tail([(int) -> int] list) {
+    return lambda (int n) -> [(int) -> int] . list(n - 1);
+}
+
+int length([(int) -> int] list) {
+    int i = 0;
+    while (true) {
+        if (list(i) == 0) {
+            return i;
+        }
+        i++;
+    }
+}
+
+[(int) -> int] zeros() {
+    return lambda (int n) -> int . 0;
+}
+
+[(int) -> int] add(int x, [(int) -> int] list) {
+    print(x);
+    return lambda (int n) -> int {
+        if (n == 0) {
+            return x;
+        }
+        else { 
+            return list(n - 1);
+        }
+    };
+}
+
+[(int) -> int] concat([(int) -> int] list1, [(int) -> int] list2) {
+    return lambda (int n) -> int {
+        if (n < length(list1)) {
+            return list1(n);
+        }
+        else {
+            return list2(n - length(list1));
+        }
+    };
+}
+
+int main() {
+    [(int) -> int] list;
+    list = zeros();
+    print(length(list)); // 0
+
+    // list = add(1, list);
+    // list = add(2, list);
+    // list = add(3, list);
+    // print(head(list)); // 3
+}

@@ -71,7 +71,7 @@ execProgram :: Program -> IO ()
 execProgram p = do
   (val, store) <- runStateT (runReaderT (runExceptT (evalProg p)) initEnv) initStore
   print val
-  print store
+  -- print store
   pure ()
 
 evalProg :: Program -> IM Value
@@ -199,8 +199,10 @@ evalStmts swhile@(SWhile pos e block : stmts) = do
   b <- evalExpr e
   case b of
     VBool True -> do
-      evalBlock block
-      evalStmts swhile
+      res <- evalBlock block
+      case res of
+        VNothing -> evalStmts swhile
+        _ -> pure res
     VBool False -> do
       evalStmts stmts
 
@@ -337,20 +339,14 @@ evalExpr (EOr pos e e') = do
 
 evalExpr (ELambdaBlock pos args t block) = do
   env <- ask
-  let env' = foldr (\arg env'' -> case arg of
-          CopyArg _ t arg_id -> Map.insert arg_id (newloc env'') env''
-        ) env args
-      f = VFun t args block env'
+  let f = VFun t args block env
   pure f
 
 evalExpr (ELambdaExpr pos args t e) = do
   env <- ask
   let loc = newloc env
       block = SBlock pos [SRet pos e]
-  let env' = foldr (\arg env'' -> case arg of
-          CopyArg _ t arg_id -> Map.insert arg_id (newloc env'') env''
-        ) env args
-      f = VFun t args block env'
+      f = VFun t args block env
   pure f
 
 evalExpr (EVal pos value) = pure value
