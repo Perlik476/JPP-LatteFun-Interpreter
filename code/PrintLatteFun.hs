@@ -194,7 +194,17 @@ instance Print (AbsLatteFun.Type' a) where
     AbsLatteFun.TStr _ -> prPrec i 0 (concatD [doc (showString "string")])
     AbsLatteFun.TBool _ -> prPrec i 0 (concatD [doc (showString "bool")])
     AbsLatteFun.TVoid _ -> prPrec i 0 (concatD [doc (showString "void")])
-    AbsLatteFun.TFun _ types type_ -> prPrec i 0 (concatD [doc (showString "["), doc (showString "("), prt 0 types, doc (showString ")"), doc (showString "->"), prt 0 type_, doc (showString "]")])
+    AbsLatteFun.TFun _ targs type_ -> prPrec i 0 (concatD [doc (showString "["), doc (showString "("), prt 0 targs, doc (showString ")"), doc (showString "->"), prt 0 type_, doc (showString "]")])
+
+instance Print (AbsLatteFun.TArg' a) where
+  prt i = \case
+    AbsLatteFun.TCopyArg _ type_ -> prPrec i 0 (concatD [prt 0 type_])
+    AbsLatteFun.TRefArg _ type_ -> prPrec i 0 (concatD [prt 0 type_, doc (showString "ref")])
+
+instance Print [AbsLatteFun.TArg' a] where
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print [AbsLatteFun.Type' a] where
   prt _ [] = concatD []

@@ -70,7 +70,6 @@ initStore :: Store
 initStore = Map.insert 0 f Map.empty
   where
     f :: Value
-    -- f = VFun (TVoid Nothing) [CopyArg Nothing (TInt Nothing) (Ident "x")] block (Map.insert (Ident "x") 1 Map.empty)
     f = VFun (TVoid Nothing) [CopyArg Nothing (TInt Nothing) (Ident "x")] block Map.empty
 
     block :: Block
@@ -95,7 +94,10 @@ getDefaultForType :: Type -> Value
 getDefaultForType (TInt _) = VInt 0
 getDefaultForType (TStr _) = VString ""
 getDefaultForType (TBool _) = VBool False
--- getDefaultForType (TFun _ ts t) = VFun ts
+-- getDefaultForType (TFun _ args t) = VFun t args block Map.empty
+--   where
+--     block :: Block
+--     block = SBlock Nothing [SRet Nothing $ EVal Nothing $ getDefaultForType t]
 
 evalStmts :: [Stmt] -> IM Value
 

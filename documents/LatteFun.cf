@@ -58,7 +58,7 @@ TBool.      Type ::= "bool" ;
 
 TVoid.      Type ::= "void" ;
 
-TFun.       Type ::= "[" "(" [Type] ")" "->" Type "]" ;
+TFun.       Type ::= "[" "(" [Arg] ")" "->" Type "]" ;
 
 separator  Type "," ;
 

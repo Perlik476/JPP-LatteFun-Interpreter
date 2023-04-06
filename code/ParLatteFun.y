@@ -134,7 +134,18 @@ Type
   | 'string' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TStr (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1))) }
   | 'bool' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TBool (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1))) }
   | 'void' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TVoid (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1))) }
-  | '[' '(' ListType ')' '->' Type ']' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TFun (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $6)) }
+  | '[' '(' ListTArg ')' '->' Type ']' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TFun (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $6)) }
+
+TArg :: { (AbsLatteFun.BNFC'Position, AbsLatteFun.TArg) }
+TArg
+  : Type { (fst $1, AbsLatteFun.TCopyArg (fst $1) (snd $1)) }
+  | Type 'ref' { (fst $1, AbsLatteFun.TRefArg (fst $1) (snd $1)) }
+
+ListTArg :: { (AbsLatteFun.BNFC'Position, [AbsLatteFun.TArg]) }
+ListTArg
+  : {- empty -} { (AbsLatteFun.BNFC'NoPosition, []) }
+  | TArg { (fst $1, (:[]) (snd $1)) }
+  | TArg ',' ListTArg { (fst $1, (:) (snd $1) (snd $3)) }
 
 ListType :: { (AbsLatteFun.BNFC'Position, [AbsLatteFun.Type]) }
 ListType

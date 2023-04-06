@@ -59,7 +59,12 @@ transType x = case x of
   AbsLatteFun.TStr _ -> failure x
   AbsLatteFun.TBool _ -> failure x
   AbsLatteFun.TVoid _ -> failure x
-  AbsLatteFun.TFun _ types type_ -> failure x
+  AbsLatteFun.TFun _ targs type_ -> failure x
+
+transTArg :: Show a => AbsLatteFun.TArg' a -> Result
+transTArg x = case x of
+  AbsLatteFun.TCopyArg _ type_ -> failure x
+  AbsLatteFun.TRefArg _ type_ -> failure x
 
 transExpr :: Show a => AbsLatteFun.Expr' a -> Result
 transExpr x = case x of
