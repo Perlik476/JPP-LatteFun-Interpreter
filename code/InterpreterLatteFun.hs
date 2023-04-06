@@ -47,16 +47,8 @@ run v p s =
   ts = myLexer s
   showPosToken ((l,c),t) = concat [ show l, ":", show c, "\t", show t ]
 
-type Var = Ident
-type Env = Map.Map Var Loc
-type Store = Map.Map Loc Value
-type Loc = Int
-
 newloc :: Env -> Loc
 newloc env = 1 + foldr (max . snd) 0 (Map.assocs env)
-
-data Value = VInt Integer | VString String | VBool Bool | VFun Type [Arg] Block Env | VVoid | VNothing
-  deriving (Eq, Show)
 
 type IM a = ExceptT String (ReaderT Env (StateT Store IO)) a
 
@@ -94,10 +86,16 @@ getDefaultForType :: Type -> Value
 getDefaultForType (TInt _) = VInt 0
 getDefaultForType (TStr _) = VString ""
 getDefaultForType (TBool _) = VBool False
--- getDefaultForType (TFun _ args t) = VFun t args block Map.empty
---   where
---     block :: Block
---     block = SBlock Nothing [SRet Nothing $ EVal Nothing $ getDefaultForType t]
+getDefaultForType (TFun _ targs t) = VFun t args block Map.empty
+  where
+    block :: Block
+    block = SBlock Nothing [SRet Nothing $ EVal Nothing $ getDefaultForType t]
+
+    args :: [Arg]
+    args = zipWith (\ targ n -> case targ of
+                  TCopyArg p t' -> CopyArg p t' (Ident $ show n)
+                  TRefArg p t' -> RefArg p t' (Ident $ show n)
+              ) targs [1..]
 
 evalStmts :: [Stmt] -> IM Value
 
@@ -149,7 +147,7 @@ evalStmts (SIncr pos id : stmts) = do
     Just loc -> do
       store <- get
       let maybeValue = Map.lookup loc store
-      case maybeValue of 
+      case maybeValue of
         Nothing -> throwError "impossible"
         Just (VInt n) -> do
           modify $ Map.insert loc (VInt $ n + 1)
@@ -163,7 +161,7 @@ evalStmts (SDecr pos id : stmts) = do
     Just loc -> do
       store <- get
       let maybeValue = Map.lookup loc store
-      case maybeValue of 
+      case maybeValue of
         Nothing -> throwError "impossible"
         Just (VInt n) -> do
           modify $ Map.insert loc (VInt $ n - 1)
@@ -209,11 +207,11 @@ evalStmts swhile@(SWhile pos e block : stmts) = do
     VBool False -> do
       evalStmts stmts
 
-evalStmts (SExp pos e : []) = evalExpr e 
+evalStmts (SExp pos e : []) = evalExpr e
 
 evalStmts (SExp pos e : stmts) = do
   evalExpr e
-  evalStmts stmts 
+  evalStmts stmts
 
 evalStmts (SPrint pos e : stmts) = do
   v <- evalExpr e
@@ -252,12 +250,12 @@ evalExpr (EApp pos id es) = do
         Just (VFun t args f env') -> do
           let (store', env') = foldr (
                 \(n, arg) (store'', env'') -> case arg of
-                  CopyArg _ t' arg_id -> 
+                  CopyArg _ t' arg_id ->
                     let loc' = newloc env'' in
                     (Map.insert loc' n store'', Map.insert arg_id loc' env'')
-                  RefArg _ t' arg_id -> 
+                  RefArg _ t' arg_id ->
                     let maybeLoc' = Map.lookup arg_id env in
-                    case maybeLoc' of 
+                    case maybeLoc' of
                       -- Nothing -> -- throwError $ "Variable" ++ fromIdent arg_id ++ "not defined "
                       Just loc' -> (Map.insert loc' n store'', Map.insert arg_id loc' env'')
                 ) (store, env) (zip ns args)
@@ -265,7 +263,7 @@ evalExpr (EApp pos id es) = do
           modify $ const store'
           local (const env') (evalBlock f)
         Just _ -> throwError $ "Internal error: expected function in store at " ++ show pos
-    
+
 evalExpr (EAppLambda pos lambda es) = do
   f <- evalExpr lambda
   env <- ask
@@ -292,7 +290,7 @@ evalExpr (ENot pos e) = do
   case b of
     VBool True -> pure $ VBool False
     VBool False -> pure $ VBool True
-  
+
 evalExpr (EMul pos e op e') = do
   v <- evalExpr e
   v' <- evalExpr e'
@@ -357,7 +355,7 @@ evalExpr (ELambdaExpr pos args t e) = do
       f = VFun t args block env'
   pure f
 
-
+evalExpr (EVal pos value) = pure value
 
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()

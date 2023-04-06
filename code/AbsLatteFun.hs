@@ -10,13 +10,14 @@
 
 module AbsLatteFun where
 
-import Prelude (Integer, String)
+import Prelude (Integer, String, Bool)
 import qualified Prelude as C
   ( Eq, Ord, Show, Read
   , Functor, Foldable, Traversable
   , Int, Maybe(..)
   )
 import qualified Data.String
+import qualified Data.Map as Map
 
 type Program = Program' BNFC'Position
 data Program' a = PProgram a [Init' a]
@@ -81,7 +82,16 @@ data Expr' a
     | EOr a (Expr' a) (Expr' a)
     | ELambdaExpr a [Arg' a] (Type' a) (Expr' a)
     | ELambdaBlock a [Arg' a] (Type' a) (Block' a)
+    | EVal a Value
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
+
+data Value = VInt Integer | VString String | VBool Bool | VFun Type [Arg] Block Env | VVoid | VNothing
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+type Var = Ident
+type Env = Map.Map Var Loc
+type Store = Map.Map Loc Value
+type Loc = Integer
 
 type AddOp = AddOp' BNFC'Position
 data AddOp' a = OPlus a | OMinus a
