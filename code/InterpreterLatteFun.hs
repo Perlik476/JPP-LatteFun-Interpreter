@@ -238,7 +238,7 @@ evalExpr (EVar pos id) = do
 
 evalExpr (EApp pos id es) = do
   env <- ask
-  ns <- mapM evalExpr es
+  ns <- mapM evalExpr es -- TODO - to raczej nie powinno się zawsze obliczać?
   let maybeLoc = Map.lookup id env
   case maybeLoc of
     Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined (at " ++ show pos ++ ")"
@@ -249,16 +249,17 @@ evalExpr (EApp pos id es) = do
         Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined (at " ++ show pos ++ ")"
         Just (VFun t args f env') -> do
           let (store', env') = foldr (
-                \(n, arg) (store'', env'') -> case arg of
+                \((e, n), arg) (store'', env'') -> case arg of
                   CopyArg _ t' arg_id ->
                     let loc' = newloc env'' in
                     (Map.insert loc' n store'', Map.insert arg_id loc' env'')
                   RefArg _ t' arg_id ->
-                    let maybeLoc' = Map.lookup arg_id env in
+                    let EVar _ var_id = e in
+                    let maybeLoc' = Map.lookup var_id env in
                     case maybeLoc' of
                       -- Nothing -> -- throwError $ "Variable" ++ fromIdent arg_id ++ "not defined "
-                      Just loc' -> (Map.insert loc' n store'', Map.insert arg_id loc' env'')
-                ) (store, env) (zip ns args)
+                      Just loc' -> (store'', Map.insert arg_id loc' env'')
+                ) (store, env) (zip (zip es ns) args)
 
           modify $ const store'
           local (const env') (evalBlock f)

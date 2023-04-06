@@ -39,8 +39,8 @@ int main() {
     print(x); // 21
 
     int y = 2;
-    (λ (int ref x) -> void {
-        x = 37;
+    (λ (int ref dupa) -> void {
+        dupa = 37;
     })(y);
     print(y); // 37
 
