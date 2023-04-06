@@ -1,0 +1,14 @@
+void change_fun_to_mul([(int, int) -> int] ref f) {
+    f = λ (int a, int b) -> int . a * b;
+}
+
+int main() {
+    [(int, int) -> int] f = λ (int a, int b) -> int . a + b;
+    print(f(2, 3)); // 5
+    
+    change_fun_to_mul(f);
+
+    print(f(2, 3)); // 6
+    
+    return 0;
+}

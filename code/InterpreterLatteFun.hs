@@ -122,10 +122,7 @@ evalStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do
   env <- ask
   let loc = newloc env
   let env' = Map.insert id loc env
-      env'' = foldr (\arg env''' -> case arg of
-          CopyArg _ t arg_id -> Map.insert arg_id (newloc env''') env'''
-        ) env' args
-      f = VFun t args block env''
+      f = VFun t args block env'
   modify $ Map.insert loc f
   local (Map.insert id loc) (evalStmts stmts)
 
