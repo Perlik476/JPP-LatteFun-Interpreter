@@ -247,22 +247,22 @@ evalExpr (EApp pos id es) = do
       case maybeFun of
         Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined (at " ++ show pos ++ ")"
         Just (VFun t args f env') -> do
-          let (store', env') = foldr (
-                \((e, n), arg) (store'', env'') -> case arg of
+          let env'' = Map.insert (Ident "_") (newloc env) env'
+          let (store', env''') = foldr (
+                \((e, n), arg) (store'', env'''') -> case arg of
                   CopyArg _ t' arg_id ->
-                    let loc' = newloc env'' in
-                    (Map.insert loc' n store'', Map.insert arg_id loc' env'')
+                    let loc' = newloc env'''' in
+                    (Map.insert loc' n store'', Map.insert arg_id loc' env'''')
                   RefArg _ t' arg_id ->
                     let EVar _ var_id = e in
                     let maybeLoc' = Map.lookup var_id env in
                     case maybeLoc' of
                       -- Nothing -> -- throwError $ "Variable" ++ fromIdent arg_id ++ "not defined "
-                      Just loc' -> (store'', Map.insert arg_id loc' env'')
-                ) (store, env) (zip (zip es ns) args)
-
+                      Just loc' -> (store'', Map.insert arg_id loc' env'''')
+                ) (store, env'') (zip (zip es ns) args)
           modify $ const store'
-          local (const env') (evalBlock f)
-        Just _ -> throwError $ "Internal error: expected function in store at " ++ show pos
+          local (const env''') (evalBlock f)
+        Just value -> throwError $ "Internal error: expected function in store at " ++ show pos ++ ", got " ++ show value
 
 evalExpr (EAppLambda pos lambda es) = do
   f <- evalExpr lambda

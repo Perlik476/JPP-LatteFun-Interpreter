@@ -48,8 +48,8 @@ int main() {
     list = zeros();
     print(length(list)); // 0
 
-    // list = add(1, list);
-    // list = add(2, list);
-    // list = add(3, list);
-    // print(head(list)); // 3
+    list = add(1, list);
+    list = add(2, list);
+    list = add(3, list);
+    print(head(list)); // 3
 }

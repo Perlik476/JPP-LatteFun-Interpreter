@@ -1,16 +1,31 @@
-void change_fun_to_mul([(int, int) -> int] ref f) {
-    f = λ (int a, int b) -> int {
-        return a * b;
-    };
+// void change_fun_to_mul([(int, int) -> int] ref f) {
+//     f = λ (int a, int b) -> int {
+//         return a * b;
+//     };
+// }
+
+// int main() {
+//     [(int, int) -> int] f = λ (int a, int b) -> int . a + b;
+//     print(f(2, 3)); // 5
+
+//     change_fun_to_mul(f);
+
+//     print(f(2, 3)); // 6
+    
+//     return 0;
+// }
+
+void change_to_2137(int ref x) {
+    x = 2137;
 }
 
 int main() {
-    [(int, int) -> int] f = λ (int a, int b) -> int . a + b;
-    print(f(2, 3)); // 5
+    int y = 69;
+    print(y);
 
-    change_fun_to_mul(f);
+    change_to_2137(y);
 
-    print(f(2, 3)); // 6
+    print(y);
     
     return 0;
 }
