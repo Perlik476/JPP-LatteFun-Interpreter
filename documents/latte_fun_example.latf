@@ -1,0 +1,65 @@
+int fib(int n) {
+    bool check(int n) {
+        return n < 2;
+    }
+
+    if (check(n)) {
+        return n;
+    }
+
+    return fib(n - 1) + fib(n - 2);
+}
+
+[(int, int) -> int] create_sum_function() {
+    return lambda (int a, int b) -> int . a + b;
+}
+
+int main() {
+    [([(int, int) -> int], int) -> int] f = λ ([(int, int) -> int] f, int x) -> int . f(x, x);
+    [(int, int) -> int] sum = create_sum_function();
+    printInt(f(sum, 7)); // 14
+
+    [(int, int) -> void] printIntNTimes = λ (int x, int n) -> int {
+        while (n > 0) {
+            printInt(x);
+            n = n - 1;
+        }
+    };
+    printIntNTimes(7, 3); 
+    /*
+    7
+    7
+    7
+    */
+
+    [(int) -> int] fib2 = fib;
+    printInt(fib2(6)); // 8
+
+    int x = (lambda (int x) -> int . x + 1)(20);
+    printInt(x); // 21
+
+    int y = 2;
+    (λ (int ref x) -> void {
+        x = 37;
+    })(y);
+    printInt(y); // 37
+
+    x = 42;
+    (λ (int x) -> void {
+        x = 11;
+    })(x);
+    printInt(x); // 42
+
+    (λ () -> void {
+        x = 11;
+    })();
+    printInt(x); // 11
+
+    int z;
+    printInt(z); // 0
+
+    [(string, bool) -> int] g;
+    printInt(g("abc", true)); // 0
+
+    return 0;
+}

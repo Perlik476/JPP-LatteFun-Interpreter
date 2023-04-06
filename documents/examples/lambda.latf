@@ -1,0 +1,6 @@
+int main() {
+    [(int, int) -> int] sum = λ (int x, int y) -> int . x + y;
+    print(sum(42, 24)); // 66
+
+    return 0;
+}

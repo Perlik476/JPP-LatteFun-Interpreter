@@ -1,0 +1,9 @@
+int square(int n) {
+    return n * n;
+}
+
+int main() {
+    print(square(2137));
+
+    return 0;
+}

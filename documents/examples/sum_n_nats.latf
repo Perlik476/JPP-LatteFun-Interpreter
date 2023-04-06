@@ -1,0 +1,13 @@
+int sum_first_nats(int n) {
+    if (n == 0) {
+        return 0;
+    }
+
+    return n + sum_first_nats(n - 1);
+}
+
+int main() {
+    print(sum_first_nats(10));
+
+    return 0;
+}
