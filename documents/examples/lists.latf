@@ -87,17 +87,26 @@ void printlnList([(int) -> int] list) {
     };
 }
 
+
 [(int) -> int] filter([(int) -> bool] f, [(int) -> int] list) {
     return lambda (int n) -> int {
         if (list(n) == 0) {
             return 0;
         }
         else {
-            if (f(list(n))) {
-                return list(n);
-            }
-            else {
-                return (filter(f, tail(list)))(n);
+            [(int) -> int] lst = list;
+            while (true) {
+                int hd = head(lst);
+                if (hd == 0) {
+                    return 0;
+                }
+                if (f(hd)) {
+                    if (n == 0) {
+                        return hd;
+                    }
+                    n--;
+                }
+                lst = tail(lst);
             }
         }
     };
@@ -113,11 +122,11 @@ void printlnList([(int) -> int] list) {
 }
 
 [(int) -> int] foldr([(int, int) -> int] f, int x, [(int) -> int] list) {
-    if (list(0) == 0) {
+    if (head(list) == 0) {
         return x;
     }
     else {
-        return f(list(0), foldr(f, x, tail(list)));
+        return f(head(list), foldr(f, x, tail(list)));
     }
 }
 
@@ -193,9 +202,18 @@ int fib(int n) {
 
 [(int) -> int] fibs = map(lambda (int n) -> int . fib(n), nats);
 
+[(int) -> int] evens = filter(lambda (int x) -> bool . x % 2 == 0, nats);
+
+[(int) -> int] odds = filter(lambda (int x) -> bool . x % 2 == 1, nats);
+
+[(int) -> int] primes = filter(lambda (int x) -> bool . length(filter(lambda (int y) -> bool . x % y == 0, take(x, nats))) == 2, nats);
+
 int main() {
     print("fibs: ");
     printlnList(take(10, fibs));
+
+    print("evens: ");
+    printlnList(take(10, evens));
 
     print("nats squared:");
     printlnList(take(10, map(lambda (int x) -> int . x * x, nats)));
@@ -206,8 +224,11 @@ int main() {
     print("fibs + nats:");
     printlnList(take(10, list));
 
-    print("sum of the first 100 nats: ");
-    println(foldr(sum, 0, take(100, nats)));
+    print("sum of the first 10 nats: ");
+    println(foldl(sum, 0, take(10, nats)));
+
+    print("primes: ");
+    printlnList(take(10, primes));
 
     return 0;
 }

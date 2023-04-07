@@ -1,0 +1,62 @@
+bool canReach(int start, int end, int number_of_nodes, [(int, int) -> bool] edges, [(int) -> bool] visited) {
+    [(int) -> bool] visit(int index, [(int) -> bool] visited) {
+        return lambda (int i) -> int {
+            if (i == index) {
+                return true;
+            }
+            else {
+                return visited(i);
+            }
+        };
+    }
+
+    if (start == end) {
+        return true;
+    }
+
+    visited = visit(start, visited);
+
+    int node = 0;
+    while (node < number_of_nodes) {
+        // print("node: "); print(node); print(" visited: "); print(visited(node)); print(" edge: "); println(edges(start, node));
+        if (!visited(node) && edges(start, node)) {
+            if (canReach(node, end, number_of_nodes, edges, visited)) {
+                return true;
+            }
+        }
+        node++;
+    }
+
+    return false;
+}
+
+
+int main() {
+    int number_of_nodes = 5;
+    [(int, int) -> bool] edges = lambda (int i, int j) -> bool {
+        if (i == 0) {
+            return j == 1 || j == 2;
+        }
+        if (i == 1) {
+            return j == 2 || j == 3;
+        }
+        if (i == 2) {
+            return j == 3 || j == 4;
+        }
+        if (i == 3) {
+            return j == 4;
+        }
+        if (i == 4) {
+            return j == 1;
+        }
+        return false;
+    };
+    [(int) -> bool] empty_visited = lambda (int i) -> bool . false;
+
+    println(canReach(0, 1, number_of_nodes, edges, empty_visited)); // true
+    println(canReach(0, 2, number_of_nodes, edges, empty_visited)); // true
+    println(canReach(4, 0, number_of_nodes, edges, empty_visited)); // false
+    println(canReach(4, 1, number_of_nodes, edges, empty_visited)); // false
+
+    return 0;
+}
