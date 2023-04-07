@@ -47,8 +47,10 @@ run v p s =
   ts = myLexer s
   showPosToken ((l,c),t) = concat [ show l, ":", show c, "\t", show t ]
 
-newloc :: Env -> Loc
-newloc env = 1 + foldr (max . snd) 0 (Map.assocs env)
+newloc :: Store -> Loc
+newloc store = 1 + foldr (max . fst) 0 (Map.toList store)
+
+-- makeState :: Env -> Store -> State
 
 type IM a = ExceptT String (ReaderT Env (StateT Store IO)) a
 
@@ -106,21 +108,22 @@ evalStmts (SBStmt pos block : stmts) = do
   evalStmts stmts
 
 evalStmts (SDecl pos t id : stmts) = do
-  env <- ask
-  let loc = newloc env
+  store <- get
+  let loc = newloc store
   modify $ Map.insert loc (getDefaultForType t)
   local (Map.insert id loc) (evalStmts stmts)
 
 evalStmts (SInit pos (IVarDef pos' t id e) : stmts) = do
   n <- evalExpr e
-  env <- ask
-  let loc = newloc env
+  store <- get
+  let loc = newloc store
   modify $ Map.insert loc n
   local (Map.insert id loc) (evalStmts stmts)
 
 evalStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do
   env <- ask
-  let loc = newloc env
+  store <- get
+  let loc = newloc store
   let env' = Map.insert id loc env
       f = VFun t args block env'
   modify $ Map.insert loc f
@@ -247,27 +250,26 @@ evalExpr (EApp pos id es) = do
       case maybeFun of
         Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined (at " ++ show pos ++ ")"
         Just (VFun t args f env') -> do
-          let env'' = Map.insert (Ident "_") (newloc env) env'
-          let (store', env''') = foldr (
-                \((e, n), arg) (store'', env'''') -> case arg of
+          let (store', env'') = foldr (
+                \((e, n), arg) (store'', env''') -> case arg of
                   CopyArg _ t' arg_id ->
-                    let loc' = newloc env'''' in
-                    (Map.insert loc' n store'', Map.insert arg_id loc' env'''')
+                    let loc' = newloc store'' in
+                    (Map.insert loc' n store'', Map.insert arg_id loc' env''')
                   RefArg _ t' arg_id ->
                     let EVar _ var_id = e in
                     let maybeLoc' = Map.lookup var_id env in
                     case maybeLoc' of
                       -- Nothing -> -- throwError $ "Variable" ++ fromIdent arg_id ++ "not defined "
-                      Just loc' -> (store'', Map.insert arg_id loc' env'''')
-                ) (store, env'') (zip (zip es ns) args)
+                      Just loc' -> (store'', Map.insert arg_id loc' env''')
+                ) (store, env') (zip (zip es ns) args)
           modify $ const store'
-          local (const env''') (evalBlock f)
+          local (const env'') (evalBlock f)
         Just value -> throwError $ "Internal error: expected function in store at " ++ show pos ++ ", got " ++ show value
 
 evalExpr (EAppLambda pos lambda es) = do
   f <- evalExpr lambda
-  env <- ask
-  let loc = newloc env
+  store <- get
+  let loc = newloc store
   modify $ Map.insert loc f
   local (Map.insert (Ident "λ") loc) $ evalExpr (EApp pos (Ident "λ") es)
 
@@ -339,12 +341,13 @@ evalExpr (EOr pos e e') = do
 
 evalExpr (ELambdaBlock pos args t block) = do
   env <- ask
-  let f = VFun t args block env
+  let f = VFun t args block env 
   pure f
 
 evalExpr (ELambdaExpr pos args t e) = do
   env <- ask
-  let loc = newloc env
+  store <- get
+  let loc = newloc store
       block = SBlock pos [SRet pos e]
       f = VFun t args block env
   pure f

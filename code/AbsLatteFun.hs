@@ -85,13 +85,14 @@ data Expr' a
     | EVal a Value
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
 
-data Value = VInt Integer | VString String | VBool Bool | VFun Type [Arg] Block Env | VVoid | VNothing
+data Value = VInt Integer | VString String | VBool Bool | VFun Type [Arg] Block Env | VVoid | VNothing --VFun Type [Arg] Block Env State
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 type Var = Ident
 type Env = Map.Map Var Loc
 type Store = Map.Map Loc Value
 type Loc = Integer
+-- type State = Map.Map Var Value
 
 type AddOp = AddOp' BNFC'Position
 data AddOp' a = OPlus a | OMinus a

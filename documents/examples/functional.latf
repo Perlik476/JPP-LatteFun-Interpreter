@@ -3,7 +3,7 @@ int head([(int) -> int] list) {
 }
 
 [(int) -> int] tail([(int) -> int] list) {
-    return lambda (int n) -> [(int) -> int] . list(n - 1);
+    return lambda (int n) -> [(int) -> int] . list(n + 1);
 }
 
 int length([(int) -> int] list) {
@@ -21,7 +21,6 @@ int length([(int) -> int] list) {
 }
 
 [(int) -> int] add(int x, [(int) -> int] list) {
-    print(x);
     return lambda (int n) -> int {
         if (n == 0) {
             return x;
@@ -43,13 +42,183 @@ int length([(int) -> int] list) {
     };
 }
 
-int main() {
+void printList([(int) -> int] list) {
+    int i = 0;
+    while (true) {
+        if (list(i) == 0) {
+            return;
+        }
+        print(list(i));
+        i++;
+    }
+}
+
+[(int) -> int] reverse([(int) -> int] list) {
+    [(int) -> int] reversed;
+    reversed = zeros();
+    int i = 0;
+    while (true) {
+        if (list(i) == 0) {
+            return reversed;
+        }
+        reversed = add(list(i), reversed);
+        i++;
+    }
+}
+
+[(int) -> int] map([(int) -> int] f, [(int) -> int] list) {
+    return lambda (int n) -> int {
+        if (list(n) == 0) {
+            return 0;
+        }
+        else {
+            return f(list(n));
+        }
+    };
+}
+
+[(int) -> int] filter([(int) -> bool] f, [(int) -> int] list) {
+    return lambda (int n) -> int {
+        if (list(n) == 0) {
+            return 0;
+        }
+        else {
+            if (f(list(n))) {
+                return list(n);
+            }
+            else {
+                return (filter(f, tail(list)))(n);
+            }
+        }
+    };
+}
+
+[(int) -> int] foldl([(int, int) -> int] f, int x, [(int) -> int] list) {
+    if (head(list) == 0) {
+        return x;
+    }
+    else {
+        return foldl(f, f(x, head(list)), tail(list));
+    }
+}
+
+[(int) -> int] foldr([(int, int) -> int] f, int x, [(int) -> int] list) {
+    if (list(0) == 0) {
+        return x;
+    }
+    else {
+        return f(list(0), foldr(f, x, tail(list)));
+    }
+}
+
+[(int) -> int] take(int n, [(int) -> int] list) {
+    return lambda (int i) -> int {
+        if (i < n) {
+            return list(i);
+        }
+        else {
+            return 0;
+        }
+    };
+}
+
+[(int) -> int] drop(int n, [(int) -> int] list) {
+    return lambda (int i) -> int . list(i + n);
+}
+
+[(int) -> int] zipWith([(int, int) -> int] f, [(int) -> int] list1, [(int) -> int] list2) {
+    return lambda (int n) -> int {
+        if (list1(n) == 0 || list2(n) == 0) {
+            return 0;
+        }
+        else {
+            return f(list1(n), list2(n));
+        }
+    };
+}
+
+[(int) -> int] iterate([(int) -> int] f, int x) {
+    return lambda (int n) -> int {
+        if (n == 0) {
+            return x;
+        }
+        else {
+            return (iterate(f, f(x)))(n - 1);
+        }
+    };
+}
+
+int identity(int x) {
+    return x;
+}
+
+[(int) -> int] repeat(int x) {
+    return iterate(lambda (int x) -> int . x, x);
+}
+
+[(int) -> int] cycle([(int) -> int] list) {
+    return lambda (int n) -> int {
+        return list(n % length(list));
+    };
+}
+
+[(int) -> int] replicate(int n, int x) {
+    return take(n, repeat(x));
+}
+
+// [(int) -> int] fibs2 = iterateList(lambda ([(int) -> int] list) -> [(int) -> int] . add(head(list) + head(tail(list)), list), add(1, add(1, zeros())));
+
+[(int) -> int] nats2 = iterate(lambda (int n) -> int . n + 1, 1);
+
+[(int) -> int] nats = lambda (int n) -> int . n + 1;
+
+int fibs(int n) {
+    int a = 1;
+    int b = 1;
+    int i = 0;
+    while (i < n) {
+        int c = a + b;
+        a = b;
+        b = c;
+        i++;
+    }
+    return a;
+}
+
+void checkBasic() {
+    print("basic: ");
+
     [(int) -> int] list;
     list = zeros();
-    print(length(list)); // 0
 
     list = add(1, list);
     list = add(2, list);
     list = add(3, list);
-    print(head(list)); // 3
+    
+    [(int) -> int] list2;
+    list2 = zeros();
+
+    list2 = add(4, list2);
+    list2 = add(5, list2);
+    list2 = add(6, list2);
+
+    list2 = reverse(list2);
+
+    list = concat(list, list2);
+    printList(list);
+}
+
+int main() {
+    print("fibs:");
+    printList(take(10, fibs));
+
+    [(int) -> int] list = zipWith(lambda (int x, int y) -> int . x + y, fibs, nats);
+    print("fibs + nats:");
+    printList(take(10, list));
+
+    [(int, int) -> int] sum = lambda (int x, int y) -> int . x + y;
+    print("sum of first 10 nats:");
+    print(foldl(sum, 0, take(10, nats)));
+
+    return 0;
 }
