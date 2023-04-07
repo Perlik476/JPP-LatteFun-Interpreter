@@ -40,17 +40,19 @@ run v p s =
       putStrLn err
       exitFailure
     Right tree -> do
-      putStrLn "\nParse Successful!"
+      -- putStrLn "\nParse Successful!"
       execProgram tree
       -- showTree v tree
   where
   ts = myLexer s
   showPosToken ((l,c),t) = concat [ show l, ":", show c, "\t", show t ]
 
-newloc :: Store -> Loc
-newloc store = 1 + foldr (max . fst) 0 (Map.toList store)
+maybeHead :: [a] -> Maybe a
+maybeHead (x:_) = Just x
+maybeHead _ = Nothing
 
--- makeState :: Env -> Store -> State
+newloc :: Store -> Loc
+newloc store = (+(-1)) $ maybe 0 id $ maybeHead (Map.keys store)
 
 type IM a = ExceptT String (ReaderT Env (StateT Store IO)) a
 
@@ -58,21 +60,28 @@ fromIdent :: Ident -> String
 fromIdent (Ident s) = s
 
 initEnv :: Env
-initEnv = Map.insert (Ident "print") 0 Map.empty
+initEnv = Map.insert (Ident "println") 1 $ Map.insert (Ident "print") 0 Map.empty
 
 initStore :: Store
-initStore = Map.insert 0 f Map.empty
+initStore = Map.insert 1 printlnFun $ Map.insert 0 printFun Map.empty
   where
-    f :: Value
-    f = VFun (TVoid Nothing) [CopyArg Nothing (TInt Nothing) (Ident "x")] block Map.empty
+    printFun :: Value
+    printFun = VFun (TVoid Nothing) [CopyArg Nothing (TInt Nothing) (Ident "x")] printBlock Map.empty
 
-    block :: Block
-    block = SBlock Nothing [SPrint Nothing (EVar Nothing (Ident "x"))]
+    printBlock :: Block
+    printBlock = SBlock Nothing [SPrint Nothing (EVar Nothing (Ident "x"))]
+
+    printlnFun :: Value
+    printlnFun = VFun (TVoid Nothing) [CopyArg Nothing (TInt Nothing) (Ident "x")] printlnBlock Map.empty
+
+    printlnBlock :: Block
+    printlnBlock = SBlock Nothing [SPrintln Nothing (EVar Nothing (Ident "x"))]
 
 execProgram :: Program -> IO ()
 execProgram p = do
   (val, store) <- runStateT (runReaderT (runExceptT (evalProg p)) initEnv) initStore
-  print val
+  -- putStr "\n"
+  -- print val
   -- print store
   pure ()
 
@@ -216,6 +225,14 @@ evalStmts (SExp pos e : stmts) = do
   evalStmts stmts
 
 evalStmts (SPrint pos e : stmts) = do
+  v <- evalExpr e
+  liftIO $ putStr $ case v of
+     VInt n -> show n
+     VBool b -> show b
+     VString s -> s
+  evalStmts stmts
+
+evalStmts (SPrintln pos e : stmts) = do
   v <- evalExpr e
   liftIO $ putStr $ case v of
      VInt n -> show n ++ "\n"

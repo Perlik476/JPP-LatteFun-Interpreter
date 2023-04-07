@@ -53,6 +53,7 @@ data Stmt' a
     | SWhile a (Expr' a) (Block' a)
     | SExp a (Expr' a)
     | SPrint a (Expr' a)
+    | SPrintln a (Expr' a)
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
 
 type Type = Type' BNFC'Position
@@ -158,6 +159,7 @@ instance HasPosition Stmt where
     SWhile p _ _ -> p
     SExp p _ -> p
     SPrint p _ -> p
+    SPrintln p _ -> p
 
 instance HasPosition Type where
   hasPosition = \case
@@ -190,6 +192,7 @@ instance HasPosition Expr where
     EOr p _ _ -> p
     ELambdaExpr p _ _ _ -> p
     ELambdaBlock p _ _ _ -> p
+    EVal p _ -> p
 
 instance HasPosition AddOp where
   hasPosition = \case
