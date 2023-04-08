@@ -80,6 +80,10 @@ initStore = Map.insert 1 printlnFun $ Map.insert 0 printFun Map.empty
 execProgram :: Program -> IO ()
 execProgram p = do
   (val, store) <- runStateT (runReaderT (runExceptT (evalProg p)) initEnv) initStore
+  putStr $ case val of
+    Right (VInt n) -> "Program finished with exit code " ++ show n ++ "\n"
+    Left error -> "Runtime exception: " ++ error ++ "\n"
+    Right v -> "Error: incorrect return value " ++ show v ++ "\n"
   -- putStr "\n"
   -- print val
   -- print store
@@ -395,4 +399,3 @@ main = do
     []         -> getContents >>= run 2 pProgram
     "-s":fs    -> mapM_ (runFile 0 pProgram) fs
     fs         -> mapM_ (runFile 2 pProgram) fs
-

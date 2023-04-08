@@ -1,0 +1,13 @@
+int main() {
+    [(int) -> [(int) -> int]] const = lambda (int n) -> [(int) -> int] . lambda (int m) -> int . n;
+    println((const(1))(0)); // 1
+
+    [(int) -> int] plus_one = lambda (int n) -> int . n + 1;
+    println(plus_one(7)); // 8
+    println(((lambda (int n) -> int . n + 1))(3)); // 4
+
+    int x = 1;
+    println(x(5));
+
+    return 0;
+}

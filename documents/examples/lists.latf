@@ -185,8 +185,6 @@ int identity(int x) {
     return take(n, repeat(x));
 }
 
-[(int) -> int] nats = iterate(lambda (int n) -> int . n + 1, 1);
-
 int fib(int n) {
     int a = 1;
     int b = 1;
@@ -200,11 +198,11 @@ int fib(int n) {
     return a;
 }
 
-[(int) -> int] fibs = map(lambda (int n) -> int . fib(n), nats);
+[(int) -> int] nats = iterate(lambda (int n) -> int . n + 1, 1);
+
+[(int) -> int] fibs = map(fib, nats);
 
 [(int) -> int] evens = filter(lambda (int x) -> bool . x % 2 == 0, nats);
-
-[(int) -> int] odds = filter(lambda (int x) -> bool . x % 2 == 1, nats);
 
 [(int) -> int] primes = filter(lambda (int x) -> bool . length(filter(lambda (int y) -> bool . x % y == 0, take(x, nats))) == 2, nats);
 
