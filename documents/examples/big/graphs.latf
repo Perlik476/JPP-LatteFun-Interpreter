@@ -144,19 +144,10 @@ int get_sample_number_of_nodes() {
     return 10;
 }
 
-bool is_same(bool a, bool b) {
-    if (a) {
-        return b;
-    }
-    else {
-        return !b;
-    }
-}
-
 
 void test_can_reach(int start, int end, bool expected) {
     bool actual = can_reach(start, end, get_sample_number_of_nodes(), get_sample_edges(), get_empty_visited());
-    if (is_same(actual, expected)) {
+    if (actual == expected) {
         print("OK: ");
     }
     else {

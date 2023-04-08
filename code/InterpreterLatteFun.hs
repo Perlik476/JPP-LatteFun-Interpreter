@@ -338,15 +338,23 @@ evalExpr (EAdd pos e op e') = do
 evalExpr (ERel pos e op e') = do
   v <- evalExpr e
   v' <- evalExpr e'
-  let (VInt n) = v
-  let (VInt n') = v'
-  pure $ VBool $ case op of
-    OLTH pos' -> n < n'
-    OLE pos' -> n <= n'
-    OGTH pos' -> n > n'
-    OGE pos' -> n >= n'
-    OEQU pos' -> n == n'
-    ONE pos' -> n /= n'
+  pure $ VBool $ case (v, v') of
+    (VInt n, VInt n') ->
+      case op of
+        OLTH pos' -> n < n'
+        OLE pos' -> n <= n'
+        OGTH pos' -> n > n'
+        OGE pos' -> n >= n'
+        OEQU pos' -> n == n'
+        ONE pos' -> n /= n'
+    (VBool b, VBool b') ->
+      case op of
+        OEQU pos' -> b == b'
+        ONE pos' -> b /= b'
+    (VString s, VString s') ->
+      case op of
+        OEQU pos' -> s == s'
+        ONE pos' -> s /= s'
 
 evalExpr (EAnd pos e e') = do
   v <- evalExpr e
