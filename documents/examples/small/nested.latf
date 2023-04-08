@@ -1,0 +1,14 @@
+int f(int x) {
+    int g(int y) {
+        return x + y;
+    }
+
+    x--;
+    return g(1);
+}
+
+int main() {
+    println(f(5)); // 5
+
+    return 0;
+}

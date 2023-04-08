@@ -19,6 +19,7 @@ import Control.Monad.Reader
 import Control.Monad.Except
 import Control.Monad.State
 import qualified Data.Map as Map
+import Data.Maybe
 
 type Err        = Either String
 type ParseFun a = [Token] -> Err a
@@ -56,6 +57,10 @@ newloc store = (+(-1)) $ maybe 0 id $ maybeHead (Map.keys store)
 
 type IM a = ExceptT String (ReaderT Env (StateT Store IO)) a
 
+showPos :: BNFC'Position -> String
+showPos (Just (line, col)) = "line " ++ show line ++ ", column " ++ show col
+showPos Nothing = "unknown location"
+
 fromIdent :: Ident -> String
 fromIdent (Ident s) = s
 
@@ -84,9 +89,7 @@ execProgram p = do
     Right (VInt n) -> "Program finished with exit code " ++ show n ++ "\n"
     Left error -> "Runtime exception: " ++ error ++ "\n"
     Right v -> "Error: incorrect return value " ++ show v ++ "\n"
-  -- putStr "\n"
-  -- print val
-  -- print store
+  putStr $ "Store size at exit: " ++ show (length store) ++ "\n"
   pure ()
 
 evalProg :: Program -> IM Value
@@ -251,25 +254,25 @@ evalExpr (EVar pos id) = do
   env <- ask
   let maybeLoc = Map.lookup id env
   case maybeLoc of
-    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " is not defined (env) at " ++ show pos
+    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " is not defined (env) at " ++ showPos pos
     Just loc -> do
       store <- get
       let maybeVar = Map.lookup loc store
       case maybeVar of
-        Nothing -> throwError $ "Variable " ++ fromIdent id ++ " is not defined (store) at " ++ show pos
+        Nothing -> throwError $ "Variable " ++ fromIdent id ++ " is not defined (store) at " ++ showPos pos
         Just v -> pure v
 
 evalExpr (EApp pos id es) = do
   env <- ask
-  ns <- mapM evalExpr es -- TODO - to raczej nie powinno się zawsze obliczać?
+  ns <- mapM evalExpr es -- TODO - to raczej nie powinno się zawsze obliczać? to może generować potencjalne niechciane efekty uboczne
   let maybeLoc = Map.lookup id env
   case maybeLoc of
-    Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined (at " ++ show pos ++ ")"
+    Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined (at " ++ showPos pos ++ ")"
     Just loc -> do
       store <- get
       let maybeFun = Map.lookup loc store
       case maybeFun of
-        Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined (at " ++ show pos ++ ")"
+        Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined (at " ++ showPos pos ++ ")"
         Just (VFun t args f env') -> do
           let (store', env'') = foldr (
                 \((e, n), arg) (store'', env''') -> case arg of
@@ -280,17 +283,16 @@ evalExpr (EApp pos id es) = do
                     let EVar _ var_id = e in
                     let maybeLoc' = Map.lookup var_id env in
                     case maybeLoc' of
-                      -- Nothing -> -- throwError $ "Variable" ++ fromIdent arg_id ++ "not defined "
                       Just loc' -> (store'', Map.insert arg_id loc' env''')
                 ) (store, env') (zip (zip es ns) args)
           modify $ const store'
           local (const env'') (evalBlock f)
-        Just value -> throwError $ "Internal error: expected function in store at " ++ show pos ++ ", got " ++ show value
+        Just value -> throwError $ "Internal error: expected function in store at " ++ showPos pos ++ ", got " ++ show value
 
 evalExpr (EAppLambda pos lambda es) = do
   f <- evalExpr lambda
   store <- get
-  let loc = newloc store
+  let loc = newloc store -- TODO nie trzeba przecież tego robić
   modify $ Map.insert loc f
   local (Map.insert (Ident "λ") loc) $ evalExpr (EApp pos (Ident "λ") es)
 
@@ -321,7 +323,7 @@ evalExpr (EMul pos e op e') = do
   let (VInt n') = v'
   case op of
     OTimes pos' -> pure $ VInt $ n * n'
-    ODiv pos' -> if n' /= 0 then pure $ VInt $ n `div` n' else throwError $ "Division by zero at " ++ show pos
+    ODiv pos' -> if n' /= 0 then pure $ VInt $ n `div` n' else throwError $ "Division by zero at " ++ showPos pos
     OMod pos' -> pure $ VInt $ n `mod` n'
 
 evalExpr (EAdd pos e op e') = do
@@ -362,7 +364,7 @@ evalExpr (EOr pos e e') = do
 
 evalExpr (ELambdaBlock pos args t block) = do
   env <- ask
-  let f = VFun t args block env 
+  let f = VFun t args block env
   pure f
 
 evalExpr (ELambdaExpr pos args t e) = do
