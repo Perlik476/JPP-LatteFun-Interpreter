@@ -266,7 +266,10 @@ evalExpr (EApp pos id es) = do
                   Just loc' -> (store'', Map.insert arg_id loc' env''')
             ) (store, env') (zip (zip es ns) args)
       modify $ const store'
-      local (const env'') (evalBlock f)
+      v <- local (const env'') (evalBlock f)
+      case v of
+        VNothing -> pure $ getDefaultForType t
+        _ -> pure v
     _ -> throwError $ "Internal error: expected function in store at " ++ showPos pos ++ ", got " ++ show value
 
 evalExpr (EAppLambda pos lambda es) = do
