@@ -195,6 +195,7 @@ instance Print (AbsLatteFun.Type' a) where
     AbsLatteFun.TBool _ -> prPrec i 0 (concatD [doc (showString "bool")])
     AbsLatteFun.TVoid _ -> prPrec i 0 (concatD [doc (showString "void")])
     AbsLatteFun.TFun _ targs type_ -> prPrec i 0 (concatD [doc (showString "["), doc (showString "("), prt 0 targs, doc (showString ")"), doc (showString "->"), prt 0 type_, doc (showString "]")])
+    AbsLatteFun.TAuto _ -> prPrec i 0 (concatD [doc (showString "auto")])
 
 instance Print (AbsLatteFun.TArg' a) where
   prt i = \case

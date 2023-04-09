@@ -60,6 +60,8 @@ TVoid.      Type ::= "void" ;
 
 TFun.       Type ::= "[" "(" [TArg] ")" "->" Type "]" ;
 
+TAuto.      Type ::= "auto" ;
+
 TCopyArg. 	TArg ::= Type;
 
 TRefArg.    TArg ::= Type "ref";

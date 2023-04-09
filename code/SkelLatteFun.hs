@@ -60,6 +60,7 @@ transType x = case x of
   AbsLatteFun.TBool _ -> failure x
   AbsLatteFun.TVoid _ -> failure x
   AbsLatteFun.TFun _ targs type_ -> failure x
+  AbsLatteFun.TAuto _ -> failure x
 
 transTArg :: Show a => AbsLatteFun.TArg' a -> Result
 transTArg x = case x of

@@ -229,14 +229,15 @@ resWords =
        (b ";" 16
           (b "." 14 (b "->" 13 (b "--" 12 N N) N) (b "/" 15 N N))
           (b "=" 19 (b "<=" 18 (b "<" 17 N N) N) (b "==" 20 N N))))
-    (b "ref" 31
-       (b "else" 26
-          (b "]" 24 (b "[" 23 (b ">=" 22 N N) N) (b "bool" 25 N N))
-          (b "int" 29 (b "if" 28 (b "false" 27 N N) N) (b "lambda" 30 N N)))
-       (b "while" 36
-          (b "true" 34
-             (b "string" 33 (b "return" 32 N N) N) (b "void" 35 N N))
-          (b "}" 39 (b "||" 38 (b "{" 37 N N) N) (b "\955" 40 N N))))
+    (b "ref" 32
+       (b "else" 27
+          (b "]" 24
+             (b "[" 23 (b ">=" 22 N N) N) (b "bool" 26 (b "auto" 25 N N) N))
+          (b "int" 30 (b "if" 29 (b "false" 28 N N) N) (b "lambda" 31 N N)))
+       (b "while" 37
+          (b "true" 35
+             (b "string" 34 (b "return" 33 N N) N) (b "void" 36 N N))
+          (b "}" 40 (b "||" 39 (b "{" 38 N N) N) (b "\955" 41 N N))))
   where
   b s n = B bs (TS bs n)
     where

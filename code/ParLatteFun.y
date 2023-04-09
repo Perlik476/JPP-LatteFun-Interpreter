@@ -47,22 +47,23 @@ import LexLatteFun
   '>='     { PT _ (TS _ 22) }
   '['      { PT _ (TS _ 23) }
   ']'      { PT _ (TS _ 24) }
-  'bool'   { PT _ (TS _ 25) }
-  'else'   { PT _ (TS _ 26) }
-  'false'  { PT _ (TS _ 27) }
-  'if'     { PT _ (TS _ 28) }
-  'int'    { PT _ (TS _ 29) }
-  'lambda' { PT _ (TS _ 30) }
-  'ref'    { PT _ (TS _ 31) }
-  'return' { PT _ (TS _ 32) }
-  'string' { PT _ (TS _ 33) }
-  'true'   { PT _ (TS _ 34) }
-  'void'   { PT _ (TS _ 35) }
-  'while'  { PT _ (TS _ 36) }
-  '{'      { PT _ (TS _ 37) }
-  '||'     { PT _ (TS _ 38) }
-  '}'      { PT _ (TS _ 39) }
-  'λ'      { PT _ (TS _ 40) }
+  'auto'   { PT _ (TS _ 25) }
+  'bool'   { PT _ (TS _ 26) }
+  'else'   { PT _ (TS _ 27) }
+  'false'  { PT _ (TS _ 28) }
+  'if'     { PT _ (TS _ 29) }
+  'int'    { PT _ (TS _ 30) }
+  'lambda' { PT _ (TS _ 31) }
+  'ref'    { PT _ (TS _ 32) }
+  'return' { PT _ (TS _ 33) }
+  'string' { PT _ (TS _ 34) }
+  'true'   { PT _ (TS _ 35) }
+  'void'   { PT _ (TS _ 36) }
+  'while'  { PT _ (TS _ 37) }
+  '{'      { PT _ (TS _ 38) }
+  '||'     { PT _ (TS _ 39) }
+  '}'      { PT _ (TS _ 40) }
+  'λ'      { PT _ (TS _ 41) }
   L_Ident  { PT _ (TV _)    }
   L_integ  { PT _ (TI _)    }
   L_quoted { PT _ (TL _)    }
@@ -135,6 +136,7 @@ Type
   | 'bool' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TBool (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1))) }
   | 'void' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TVoid (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1))) }
   | '[' '(' ListTArg ')' '->' Type ']' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TFun (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $6)) }
+  | 'auto' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TAuto (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1))) }
 
 TArg :: { (AbsLatteFun.BNFC'Position, AbsLatteFun.TArg) }
 TArg

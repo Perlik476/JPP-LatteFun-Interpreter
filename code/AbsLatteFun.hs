@@ -58,7 +58,7 @@ data Stmt' a
 
 type Type = Type' BNFC'Position
 data Type' a
-    = TInt a | TStr a | TBool a | TVoid a | TFun a [TArg' a] (Type' a) | TPrint
+    = TInt a | TStr a | TBool a | TVoid a | TFun a [TArg' a] (Type' a) | TAuto a | TPrint
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
 
 type TArg = TArg' BNFC'Position
@@ -168,6 +168,8 @@ instance HasPosition Type where
     TBool p -> p
     TVoid p -> p
     TFun p _ _ -> p
+    TAuto p -> p
+    TPrint -> C.Nothing
 
 instance HasPosition TArg where
   hasPosition = \case
