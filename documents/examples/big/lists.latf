@@ -3,7 +3,7 @@ int head([(int) -> int] list) {
 }
 
 [(int) -> int] tail([(int) -> int] list) {
-    return lambda (int n) -> [(int) -> int] . list(n + 1);
+    return lambda (int n) -> int . list(n + 1);
 }
 
 int length([(int) -> int] list) {
@@ -112,21 +112,12 @@ void printlnList([(int) -> int] list) {
     };
 }
 
-[(int) -> int] foldl([(int, int) -> int] f, int x, [(int) -> int] list) {
+int foldl([(int, int) -> int] f, int x, [(int) -> int] list) {
     if (head(list) == 0) {
         return x;
     }
     else {
         return foldl(f, f(x, head(list)), tail(list));
-    }
-}
-
-[(int) -> int] foldr([(int, int) -> int] f, int x, [(int) -> int] list) {
-    if (head(list) == 0) {
-        return x;
-    }
-    else {
-        return f(head(list), foldr(f, x, tail(list)));
     }
 }
 

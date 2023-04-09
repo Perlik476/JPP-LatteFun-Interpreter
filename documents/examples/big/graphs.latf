@@ -1,6 +1,6 @@
 bool can_reach(int start, int end, int number_of_nodes, [(int, int) -> bool] edges, [(int) -> bool] visited) {
     [(int) -> bool] visit(int index, [(int) -> bool] visited) {
-        return lambda (int i) -> int {
+        return lambda (int i) -> bool {
             if (i == index) {
                 return true;
             }
@@ -30,15 +30,15 @@ bool can_reach(int start, int end, int number_of_nodes, [(int, int) -> bool] edg
 }
 
 
-[(int) -> int] get_empty_visited() {
-    return lambda (int i) -> int . false;
+[(int) -> bool] get_empty_visited() {
+    return lambda (int i) -> bool . false;
 }
 
 
 int distance(int start, int end, int number_of_nodes, [(int, int) -> bool] edges) {
     void visit(int index, [(int) -> bool] ref visited) {
         [(int) -> bool] visited_temp = visited;
-        visited = lambda (int i) -> int {
+        visited = lambda (int i) -> bool {
             if (i == index) {
                 return true;
             }

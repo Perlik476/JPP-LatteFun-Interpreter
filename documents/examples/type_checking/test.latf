@@ -1,0 +1,11 @@
+int f(int y) {
+    return y;
+}
+
+int main() {
+    int x = f(1);
+    x = 5;
+    f = lambda (int y) -> int . y + 1;
+    println(f(x));
+    return 0;
+}
