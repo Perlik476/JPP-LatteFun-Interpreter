@@ -41,9 +41,8 @@ run v p s =
       putStrLn err
       exitFailure
     Right tree -> do
-      -- putStrLn "\nParse Successful!"
+      typeCheck tree
       execProgram tree
-      -- showTree v tree
   where
   ts = myLexer s
   showPosToken ((l,c),t) = concat [ show l, ":", show c, "\t", show t ]
@@ -56,6 +55,7 @@ newloc :: Store -> Loc
 newloc store = (+(-1)) $ maybe 0 id $ maybeHead (Map.keys store)
 
 type IM a = ExceptT String (ReaderT Env (StateT Store IO)) a
+type TM a = ExceptT String (ReaderT TEnv IO) a
 
 showPos :: BNFC'Position -> String
 showPos (Just (line, col)) = "line " ++ show line ++ ", column " ++ show col
@@ -66,6 +66,9 @@ fromIdent (Ident s) = s
 
 initEnv :: Env
 initEnv = Map.insert (Ident "println") 1 $ Map.insert (Ident "print") 0 Map.empty
+
+initTEnv :: TEnv
+initTEnv = Map.insert (Ident "println") TPrint $ Map.insert (Ident "print") TPrint Map.empty
 
 initStore :: Store
 initStore = Map.insert 1 printlnFun $ Map.insert 0 printFun Map.empty
@@ -384,6 +387,261 @@ evalExpr (ELambdaExpr pos args t e) = do
   pure f
 
 evalExpr (EVal pos value) = pure value
+
+
+typeCheck :: Program -> IO ()
+typeCheck p = do
+  result <- runReaderT (runExceptT (typeCheckProg p)) initTEnv
+  print result
+  pure ()
+
+typeCheckProg :: Program -> TM Type
+typeCheckProg (PProgram pos inits) = do
+  typeCheckStmts [SInit pos init | init <- inits]
+
+typeCheckBlock :: Block -> TM Type
+typeCheckBlock (SBlock pos stmts) = typeCheckStmts stmts
+
+
+
+sameType :: Type -> Type -> Bool
+sameType (TInt _) (TInt _) = True
+sameType (TStr _) (TStr _) = True
+sameType (TBool _) (TBool _) = True
+sameType (TVoid _) (TVoid _) = True
+sameType (TFun _ t_args t_ret) (TFun _ t_args' t_ret') = t_ret == t_ret' 
+  && foldr (\(t, t') res -> res && sameTypeArg t t') True (zip t_args t_args')
+sameType TPrint TPrint = True
+sameType _ _ = False
+
+sameTypeArg :: TArg -> TArg -> Bool
+sameTypeArg (TCopyArg _ t) (TCopyArg _ t') = sameType t t'
+sameTypeArg (TRefArg _ t) (TRefArg _ t') = sameType t t'
+
+argToType :: Arg -> TArg
+argToType (CopyArg pos t _) = TCopyArg pos t
+argToType (RefArg pos t _) = TRefArg pos t
+
+targToType :: TArg -> Type
+targToType (TCopyArg _ t) = t
+targToType (TRefArg _ t) = t
+
+
+typeCheckStmts :: [Stmt] -> TM Type
+typeCheckStmts (SEmpty pos : stmts) = pure $ TVoid pos
+
+typeCheckStmts (SBStmt pos block : stmts) = do
+  typeCheckBlock block
+  typeCheckStmts stmts
+
+typeCheckStmts (SDecl pos t id : stmts) = do
+  local (Map.insert id t) (typeCheckStmts stmts)
+
+typeCheckStmts (SInit pos (IVarDef pos' t id e) : stmts) = do
+  t_e <- typeCheckExpr e
+  if not $ sameType t t_e then
+    throwError $ "Type mismatch: " ++ show t ++ " and " ++ show t_e
+  else
+    local (Map.insert id t) (typeCheckStmts stmts)
+
+typeCheckStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do
+  env <- ask
+  let t_args = map argToType args
+  let env' = Map.insert id (TFun pos' t_args  t) env
+      f = TFun pos' t_args t
+  local (const env') (typeCheckBlock block)
+  local (Map.insert id f) (typeCheckStmts stmts)
+
+typeCheckStmts (SAss pos id e : stmts) = do
+  t_e <- typeCheckExpr e
+  env <- ask
+  let maybeType = Map.lookup id env
+  case maybeType of
+    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " not in scope at " ++ showPos pos
+    Just t -> do
+      if not $ sameType t t_e then
+        throwError $ "Type mismatch: " ++ show t ++ " and " ++ show t_e
+      else
+        typeCheckStmts stmts
+
+typeCheckStmts (SIncr pos id : stmts) = do
+  env <- ask
+  let maybeType = Map.lookup id env
+  case maybeType of
+    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " not in scope at " ++ showPos pos
+    Just t -> do
+      let t_e = TInt pos
+      if not $ sameType t t_e then
+        throwError $ "Type mismatch: " ++ show t ++ " is not of type int at" ++ showPos pos
+      else
+        typeCheckStmts stmts
+
+typeCheckStmts (SDecr pos id : stmts) = typeCheckStmts (SIncr pos id : stmts)
+
+-- TODO
+
+typeCheckStmts (SRet pos e : stmts) = typeCheckExpr e
+
+typeCheckStmts (SVRet pos : stmts) = pure $ TVoid pos
+
+typeCheckStmts (SCond pos e block : stmts) = do
+  t <- typeCheckExpr e
+  case t of
+    TBool _ -> do
+      typeCheckBlock block
+      typeCheckStmts stmts
+    _ -> do
+      throwError $ "Type mismatch: " ++ show t ++ " is not of type bool at" ++ showPos pos
+
+typeCheckStmts (SCondElse pos e block block': stmts) = do
+  t <- typeCheckExpr e
+  case t of
+    TBool _ -> do
+      typeCheckBlock block
+      typeCheckBlock block'
+      typeCheckStmts stmts
+    _ -> do
+      throwError $ "Type mismatch: " ++ show t ++ " is not of type bool at" ++ showPos pos
+
+typeCheckStmts (SWhile pos e block : stmts) = do
+  t <- typeCheckExpr e
+  case t of
+    TBool _ -> do
+      typeCheckBlock block
+      typeCheckStmts stmts
+    _ -> do
+      throwError $ "Type mismatch: " ++ show t ++ " is not of type bool at" ++ showPos pos
+
+typeCheckStmts (SExp pos e : []) = typeCheckExpr e
+
+typeCheckStmts (SExp pos e : stmts) = do
+  typeCheckExpr e
+  typeCheckStmts stmts
+
+typeCheckStmts (SPrint pos e : stmts) = do
+  t <- typeCheckExpr e
+  case t of
+    TInt _ -> typeCheckStmts stmts
+    TBool _ -> typeCheckStmts stmts
+    TStr _ -> typeCheckStmts stmts
+    _ -> throwError $ "Type mismatch: " ++ show t ++ " is not of basic type (bool/int/string) at " ++ showPos pos
+  
+
+typeCheckStmts (SPrintln pos e : stmts) = typeCheckStmts (SPrint pos e : stmts)
+
+typeCheckStmts [] = pure $ TVoid Nothing -- TODO?
+
+
+
+typeCheckExpr :: Expr -> TM Type
+-- typeCheckExpr (ELitInt pos _) = pure $ TInt pos
+
+typeCheckExpr (EVar pos id) = do
+  env <- ask
+  let maybeType = Map.lookup id env
+  case maybeType of
+    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " is not defined at " ++ showPos pos
+    Just t -> pure t
+
+typeCheckExpr (EApp pos id es) = do
+  env <- ask
+  ts <- mapM typeCheckExpr es
+  let maybeType = Map.lookup id env
+  case maybeType of
+    Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined at " ++ showPos pos
+    Just t@(TFun pos' t_args t') -> do
+      if foldr (\(t1, t2) res -> sameType t1 t2 && res) True (zip (map targToType t_args) ts) then
+          if foldr (
+            \(t_arg, e) res -> case t_arg of 
+              TRefArg _ _ -> case e of
+                EVar _ _ -> res
+                _ -> False
+              _ -> res
+          ) True (zip t_args es) then
+            pure t'
+          else
+            throwError $ "Type mismatch: expected a ref argument at " ++ showPos pos
+        else
+          throwError "Type mismatch: one of arguments is of incorrect type"
+    Just t -> throwError $ "Type mismatch: expected a function at " ++ showPos pos ++ ", got " ++ show t
+
+typeCheckExpr (EAppLambda pos lambda es) = do
+  t <- typeCheckExpr lambda
+  local (Map.insert (Ident "λ") t) $ typeCheckExpr (EApp pos (Ident "λ") es)
+
+
+typeCheckExpr (ELitInt pos _) = pure $ TInt pos
+
+typeCheckExpr (ELitTrue pos) = pure $ TBool pos
+
+typeCheckExpr (ELitFalse pos) = pure $ TBool pos
+
+typeCheckExpr (EString pos _) = pure $ TStr pos
+
+typeCheckExpr (ENeg pos e) = do
+  t <- typeCheckExpr e
+  case t of
+    TInt pos -> pure t
+    _ -> throwError $ "Type mismatch: Expected int at " ++ showPos pos
+
+typeCheckExpr (ENot pos e) = do
+  t <- typeCheckExpr e
+  case t of
+    TBool pos -> pure t
+    _ -> throwError $ "Type mismatch: Expected bool at " ++ showPos pos
+
+typeCheckExpr (EMul pos e op e') = do
+  t <- typeCheckExpr e
+  t' <- typeCheckExpr e'
+  case (t, t') of
+    (TInt _, TInt _) -> pure $ TInt pos
+    _ -> throwError $ "Type mismatch: Expected two ints at " ++ showPos pos
+
+typeCheckExpr (EAdd pos e op e') = typeCheckExpr (EMul pos e (OTimes pos) e')
+
+typeCheckExpr (ERel pos e op e') = do
+  t <- typeCheckExpr e
+  t' <- typeCheckExpr e'
+  case (t, t') of
+    (TInt _, TInt _) -> pure $ TInt pos
+    (TBool _, TBool _) ->
+      case op of
+        OEQU pos' -> pure $ TBool pos
+        ONE pos' -> pure $ TBool pos
+        _ -> throwError $ "Type mismatch: Expected two ints at " ++ showPos pos
+    (TStr _, TStr _) ->
+      case op of
+        OEQU pos' -> pure $ TStr pos
+        ONE pos' -> pure $ TStr pos
+        _ -> throwError $ "Type mismatch: Expected two ints at " ++ showPos pos
+    _ -> throwError $ "Type mismatch: Expected two ints (or maybe bools or strings) at " ++ showPos pos
+
+typeCheckExpr (EAnd pos e e') = do
+  t <- typeCheckExpr e
+  t' <- typeCheckExpr e'
+  case (t, t') of
+    (TBool _, TBool _) -> pure $ TBool pos
+    _ -> throwError $ "Type mismatch: Expected two bools at " ++ showPos pos
+
+typeCheckExpr (EOr pos e e') = typeCheckExpr (EAnd pos e e')
+
+typeCheckExpr (ELambdaBlock pos args t block) = do
+  env <- ask
+  t' <- typeCheckBlock block
+  if sameType t' t then
+    pure $ TFun pos (map argToType args) t
+  else
+    throwError $ "Type mismatch: Expected " ++ show t ++ " at " ++ showPos pos ++ ", got " ++ show t'
+
+typeCheckExpr (ELambdaExpr pos args t e) = do
+  env <- ask
+  t' <- typeCheckExpr e
+  if sameType t' t then
+    pure $ TFun pos (map argToType args) t
+  else
+    throwError $ "Type mismatch: Expected " ++ show t ++ " at " ++ showPos pos ++ ", got " ++ show t'
+
+typeCheckExpr (EVal pos VNothing) = pure $ TVoid pos
 
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()

@@ -58,7 +58,7 @@ data Stmt' a
 
 type Type = Type' BNFC'Position
 data Type' a
-    = TInt a | TStr a | TBool a | TVoid a | TFun a [TArg' a] (Type' a)
+    = TInt a | TStr a | TBool a | TVoid a | TFun a [TArg' a] (Type' a) | TPrint
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
 
 type TArg = TArg' BNFC'Position
@@ -93,7 +93,7 @@ type Var = Ident
 type Env = Map.Map Var Loc
 type Store = Map.Map Loc Value
 type Loc = Integer
--- type State = Map.Map Var Value
+type TEnv = Map.Map Var Type
 
 type AddOp = AddOp' BNFC'Position
 data AddOp' a = OPlus a | OMinus a
