@@ -521,8 +521,7 @@ typeCheckStmts (SCond pos e block : stmts) = do
       t1 <- typeCheckBlock block
       t2 <- typeCheckStmts stmts
       if sameType t1 t2 then
-        if isTAuto t1 then pure t1
-        else pure t2
+        pure t2
       else
         throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos ++ ": " ++ showType t1 ++ " and " ++ showType t2
     _ -> do
@@ -540,9 +539,7 @@ typeCheckStmts (SCondElse pos e block block': stmts) = do
       else do
         t3 <- typeCheckStmts stmts
         if sameType t1 t2 && sameType t2 t3 then
-          if isTAuto t1 then pure t1
-          else if isTAuto t2 then pure t2
-          else pure t3
+          pure t3
         else
           throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos
     _ -> do
@@ -555,8 +552,7 @@ typeCheckStmts (SWhile pos e block : stmts) = do
       t1 <- typeCheckBlock block
       t2 <- typeCheckStmts stmts
       if sameType t1 t2 then
-        if isTAuto t1 then pure t1
-        else pure t2
+        pure t2
       else
         throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos
     _ -> do

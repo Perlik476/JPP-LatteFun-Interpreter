@@ -1,11 +1,21 @@
 auto f(int x) {
+    if (x > 0) {
+        println("x is positive");
+    }
     return lambda (int y) -> int {
-        return x + y;
+        return x - y;
     };
 }
 
 int main() {
     auto g = f(-5);
     println(g(10));
+
+    g = lambda (int z) -> int . z + 1;
+    println(g(10));
+
+    g = f(5);
+    println(g(10));
+
     return 0;
 }
