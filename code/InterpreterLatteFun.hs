@@ -265,11 +265,7 @@ evalExpr (EApp pos id es) = do
                   Just loc' -> (store'', Map.insert arg_id loc' env''')
             ) (store, env') (zip (zip es ns) args)
       modify $ const store'
-      -- local (const env'') (evalBlock f)
-      v <- local (const env'') (evalBlock f)
-      case v of
-        VNothing -> pure $ getDefaultForType t
-        _ -> pure v
+      local (const env'') (evalBlock f)
     _ -> throwError $ "Internal error: expected function in store at " ++ showPos pos ++ ", got " ++ show value
 
 evalExpr (EAppLambda pos lambda es) = do
@@ -525,7 +521,7 @@ typeCheckStmts (SCond pos e block : stmts) = do
       t1 <- typeCheckBlock block
       t2 <- typeCheckStmts stmts
       if sameType t1 t2 then
-        if not (isTAuto t1) then pure t1
+        if isTAuto t1 then pure t1
         else pure t2
       else
         throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos ++ ": " ++ showType t1 ++ " and " ++ showType t2
@@ -539,13 +535,13 @@ typeCheckStmts (SCondElse pos e block block': stmts) = do
       t1 <- typeCheckBlock block
       t2 <- typeCheckBlock block'
       if sameType t1 t2 then
-        if not (isTAuto t1) then pure t1
+        if isTAuto t1 then pure t1
         else pure t2
       else do
         t3 <- typeCheckStmts stmts
         if sameType t1 t2 && sameType t2 t3 then
-          if not (isTAuto t1) then pure t1
-          else if not (isTAuto t2) then pure t2
+          if isTAuto t1 then pure t1
+          else if isTAuto t2 then pure t2
           else pure t3
         else
           throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos
@@ -559,7 +555,7 @@ typeCheckStmts (SWhile pos e block : stmts) = do
       t1 <- typeCheckBlock block
       t2 <- typeCheckStmts stmts
       if sameType t1 t2 then
-        if not (isTAuto t1) then pure t1
+        if isTAuto t1 then pure t1
         else pure t2
       else
         throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos
@@ -706,21 +702,6 @@ typeCheckExpr (ELambdaBlock pos args t block) = do
       pure t_fun'
     else
       throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t'
-  -- env <- ask
-  -- let t_args = map (targToType . argToTArg) args
-  --     no_auto = foldr (\t' res -> res && not (isTAuto t')) True t_args
-  --     id_args = map argToId args
-  -- if not no_auto then
-  --   throwError $ "Auto used as argument type at " ++ showPos pos
-  -- else do
-  --   let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ zip id_args t_args
-  --       t_fun = TFun pos (map argToTArg args) t
-  --   t' <- local (const env') (typeCheckBlock block)
-  --   let t_fun' = TFun pos (map argToTArg args) t'
-  --   if sameType t t' || (isTAuto t' && not (isTAuto t)) then
-  --     pure t_fun'
-  --   else
-  --     throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t'
 
 typeCheckExpr (ELambdaExpr pos args t e) = do
   env <- ask
@@ -739,21 +720,6 @@ typeCheckExpr (ELambdaExpr pos args t e) = do
       pure t_fun'
     else
       throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t'
-  -- env <- ask
-  -- let t_args = map (targToType . argToTArg) args
-  --     no_auto = foldr (\t' res -> res && not (isTAuto t')) True t_args
-  --     id_args = map argToId args
-  -- if not no_auto then
-  --   throwError $ "Auto used as argument type at " ++ showPos pos
-  -- else do
-  --   let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ zip id_args t_args
-  --       t_fun = TFun pos (map argToTArg args) t
-  --   t' <- local (const env') (typeCheckExpr e)
-  --   let t_fun' = TFun pos (map argToTArg args) t'
-  --   if sameType t t' || (isTAuto t' && not (isTAuto t)) then
-  --     pure t_fun'
-  --   else
-  --     throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t'
 
 typeCheckExpr (EVal pos VNothing) = pure $ TVoid pos
 
