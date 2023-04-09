@@ -713,11 +713,12 @@ typeCheckExpr (ELambdaBlock pos args t block) = do
   if not proper then
     throwError $ "Argument type is void or contains auto at " ++ showPos pos
   else do
+    let t'' = if isTFunWithTAuto t then TAuto pos else t
     let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ zip id_args t_args
-        t_fun = TFun pos (map argToTArg args) t
+        t_fun = TFun pos (map argToTArg args) t''
     t' <- local (const env') (typeCheckBlock block)
     if (sameType t t' && not (isTAuto t')) || (isTAuto t' && not (isTAuto t)) then do
-      let t_real = if not (isTAuto t) then t else t'
+      let t_real = if not (isTAuto t'') then t else t'
           t_fun' = TFun pos (map argToTArg args) t_real
       pure t_fun'
     else
