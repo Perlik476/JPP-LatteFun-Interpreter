@@ -1,6 +1,6 @@
 auto f() {
     println("Hello, world!");
-    return;
+    return; // needed to know that the return type is void
 }
 
 auto g() {

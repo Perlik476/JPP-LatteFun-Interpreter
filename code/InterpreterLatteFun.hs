@@ -266,7 +266,10 @@ evalExpr (EApp pos id es) = do
                   Just loc' -> (store'', Map.insert arg_id loc' env''')
             ) (store, env') (zip (zip es ns) args)
       modify $ const store'
-      local (const env'') (evalBlock f)
+      v <- local (const env'') (evalBlock f)
+      case v of
+        VNothing -> pure $ getDefaultForType t
+        _ -> pure v
     _ -> throwError $ "Internal error: expected function in store at " ++ showPos pos ++ ", got " ++ show value
 
 evalExpr (EAppLambda pos lambda es) = do
@@ -552,15 +555,13 @@ typeCheckStmts (SCondElse pos e block block': stmts) = do
     TBool _ -> do
       t1 <- typeCheckBlock block
       t2 <- typeCheckBlock block'
-      if sameType t1 t2 then
-        if isTAuto t1 then pure t1
-        else pure t2
-      else do
-        t3 <- typeCheckStmts stmts
-        if sameType t1 t2 && sameType t2 t3 then
-          pure t3
-        else
-          throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos
+      t3 <- typeCheckStmts stmts
+      if sameType t1 t2 && sameType t2 t3 then
+        if not (isTAuto t1) && not (isTAuto t2) then pure t1
+        else if not (isTAuto t3) then pure t3
+        else throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos
+      else
+        throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos
     _ -> do
       throwError $ "Type mismatch: " ++ showType t ++ " is not of type bool at " ++ showPos pos
 

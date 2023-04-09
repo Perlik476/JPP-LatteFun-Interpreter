@@ -1,9 +1,16 @@
-void f([(string) -> string] g) {
-    println(g("x"));
+[(int) -> int] f(bool b) {
+    if (b) {
+        return lambda (int x) -> int . x + 1;
+    }
+}
+
+auto g() {
+    return 1;
+    return false;
 }
 
 int main() {
-    f(lambda (string x) -> string . x);
+    println((f(true))(0));
     
     return 0;
 }

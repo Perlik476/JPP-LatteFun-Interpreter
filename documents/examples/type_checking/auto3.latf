@@ -1,7 +1,8 @@
 int main() {
-    auto g = print;
+    auto g = print; // OK
     g(1);
-    g = println;
+    g = println; // OK
     g(2);
+    // g = lambda (int x) -> int . x + 1; // error - incompatible types
     return 0;
 }
