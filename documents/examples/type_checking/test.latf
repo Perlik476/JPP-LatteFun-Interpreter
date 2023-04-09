@@ -1,9 +1,9 @@
-int f(int y) {
-    return "xd";
+void f([(string) -> string] g) {
+    println(g("x"));
 }
 
 int main() {
-    int x = f(1);
-    println(x);
+    f(lambda (string x) -> string . x);
+    
     return 0;
 }

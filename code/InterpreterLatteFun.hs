@@ -97,7 +97,7 @@ execProgram p = do
   case val of
     Right (VInt n) -> exitWith $ if n == 0 then ExitSuccess else ExitFailure $ fromIntegral n
     _ -> exitFailure
-   
+
 
 evalProg :: Program -> IM Value
 evalProg (PProgram pos inits) = do
@@ -391,6 +391,7 @@ showType (TStr pos) = "string (at " ++ showPos pos ++ ")"
 showType (TVoid pos) = "void (at " ++ showPos pos ++ ")"
 showType (TAuto pos) = "auto (at " ++ showPos pos ++ ")"
 showType (TFun pos args t) = "[(" ++ showArgs args ++ ") -> " ++ showType' t ++ "] (at " ++ showPos pos ++ ")"
+showType TPrint = "[(int | bool | string) -> void] (print)"
 
 showType' :: Type -> String
 showType' (TBool _) = "bool"
@@ -429,7 +430,13 @@ sameTypeArg (TRefArg _ t) (TRefArg _ t') = sameType t t'
 sameTypeArg _ _ = False
 
 isTVoid :: Type -> Bool
-isTVoid = sameType (TVoid Nothing)
+isTVoid (TVoid _) = True
+isTVoid _ = False
+
+isTFunWithTAuto :: Type -> Bool
+isTFunWithTAuto (TFun _ t_args t_ret) =
+  isTAuto t_ret || foldr ((\t res -> res || isTAuto t) . targToType) False t_args
+isTFunWithTAuto _ = False
 
 isTAuto :: Type -> Bool
 isTAuto (TAuto _) = True
@@ -461,19 +468,26 @@ typeCheckStmts (SDecl pos t id : stmts) = do
     _ -> local (Map.insert id t) (typeCheckStmts stmts)
 
 typeCheckStmts (SInit pos (IVarDef pos' t id e) : stmts) = do
-  t_e <- typeCheckExpr e
-  if sameType t t_e || isTAuto t then
-    local (Map.insert id t_e) (typeCheckStmts stmts)
-  else
-    throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t_e
+  if isTVoid t then
+    throwError $ "Variable " ++ fromIdent id ++ " has type void at " ++ showPos pos
+  else if isTFunWithTAuto t then
+    throwError $ "Variable " ++ fromIdent id ++ " has functional type with auto argument or return value at " ++ showPos pos
+  else do
+    t_e <- typeCheckExpr e
+    if isTVoid t_e then
+      throwError $ "Cannot assign void expression to variable " ++ fromIdent id ++ " at " ++ showPos pos
+    else if sameType t t_e || isTAuto t then
+      local (Map.insert id t_e) (typeCheckStmts stmts)
+    else
+      throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t_e
 
 typeCheckStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do -- TODO
   env <- ask
   let t_args = map (targToType . argToTArg) args
-      no_auto = foldr (\t' res -> res && not (isTAuto t')) True t_args
+      proper = foldr (\t' res -> res && not (isTAuto t') && not (isTVoid t') && not (isTFunWithTAuto t')) True t_args
       id_args = map argToId args
-  if not no_auto then
-    throwError $ "Auto used as argument type at " ++ showPos pos
+  if not proper then
+    throwError $ "Argument type is void or contains auto at " ++ showPos pos
   else do
     let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ (id, t_fun):zip id_args t_args
         t_fun = TFun pos' (map argToTArg args) t
@@ -488,15 +502,18 @@ typeCheckStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do -- TODO
 
 typeCheckStmts (SAss pos id e : stmts) = do
   t_e <- typeCheckExpr e
-  env <- ask
-  let maybeType = Map.lookup id env
-  case maybeType of
-    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " not in scope at " ++ showPos pos
-    Just t -> do
-      if not $ sameType t t_e then
-        throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t_e
-      else
-        typeCheckStmts stmts
+  if isTVoid t_e then
+    throwError $ "Cannot assign void expression to variable " ++ fromIdent id ++ " at " ++ showPos pos
+  else do
+    env <- ask
+    let maybeType = Map.lookup id env
+    case maybeType of
+      Nothing -> throwError $ "Variable " ++ fromIdent id ++ " not in scope at " ++ showPos pos
+      Just t -> do
+        if not $ sameType t t_e then
+          throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t_e
+        else
+          typeCheckStmts stmts
 
 typeCheckStmts (SIncr pos id : stmts) = do
   env <- ask
@@ -613,7 +630,7 @@ typeCheckExpr (EApp pos id es) = do
           else
             throwError $ "Type mismatch: one of arguments is of incorrect type at " ++ showPos pos
         else
-          throwError ("Inorrect number of arguments to function " ++ fromIdent id ++ " of type " ++ showType t ++ " at " ++ showPos pos ++ ".\n" 
+          throwError ("Inorrect number of arguments to function " ++ fromIdent id ++ " of type " ++ showType t ++ " at " ++ showPos pos ++ ".\n"
             ++ "Expected " ++ show (length t_args) ++ ", got " ++ show (length ts))
     Just TPrint -> do
       if length ts == 1 then do
@@ -644,20 +661,20 @@ typeCheckExpr (ENeg pos e) = do
   t <- typeCheckExpr e
   case t of
     TInt pos -> pure t
-    _ -> throwError $ "Type mismatch: Expected int at " ++ showPos pos
+    _ -> throwError $ "Type mismatch: Expected int at " ++ showPos pos ++ ", got " ++ showType t
 
 typeCheckExpr (ENot pos e) = do
   t <- typeCheckExpr e
   case t of
     TBool pos -> pure t
-    _ -> throwError $ "Type mismatch: Expected bool at " ++ showPos pos
+    _ -> throwError $ "Type mismatch: Expected bool at " ++ showPos pos ++ ", got " ++ showType t
 
 typeCheckExpr (EMul pos e op e') = do
   t <- typeCheckExpr e
   t' <- typeCheckExpr e'
   case (t, t') of
     (TInt _, TInt _) -> pure $ TInt pos
-    _ -> throwError $ "Type mismatch: Expected two ints at " ++ showPos pos
+    _ -> throwError $ "Type mismatch: Expected two ints at " ++ showPos pos ++ ", got " ++ showType t ++ " and " ++ showType t'
 
 typeCheckExpr (EAdd pos e op e') = typeCheckExpr (EMul pos e (OTimes pos) e')
 
@@ -670,30 +687,30 @@ typeCheckExpr (ERel pos e op e') = do
       case op of
         OEQU pos' -> pure $ TBool pos
         ONE pos' -> pure $ TBool pos
-        _ -> throwError $ "Type mismatch: Expected two ints at " ++ showPos pos
+        _ -> throwError $ "Type mismatch: Expected two ints at " ++ showPos pos ++ ", got " ++ showType t ++ " and " ++ showType t'
     (TStr _, TStr _) ->
       case op of
         OEQU pos' -> pure $ TBool pos
         ONE pos' -> pure $ TBool pos
-        _ -> throwError $ "Type mismatch: Expected two ints at " ++ showPos pos
-    _ -> throwError $ "Type mismatch: Expected two ints (or maybe bools or strings) at " ++ showPos pos
+        _ -> throwError $ "Type mismatch: Expected two ints at " ++ showPos pos ++ ", got " ++ showType t ++ " and " ++ showType t'
+    _ -> throwError $ "Type mismatch: Expected two basic type expressions (int/bool/string) at " ++ showPos pos ++ ", got " ++ showType t ++ " and " ++ showType t'
 
 typeCheckExpr (EAnd pos e e') = do
   t <- typeCheckExpr e
   t' <- typeCheckExpr e'
   case (t, t') of
     (TBool _, TBool _) -> pure $ TBool pos
-    _ -> throwError $ "Type mismatch: Expected two bools at " ++ showPos pos
+    _ -> throwError $ "Type mismatch: Expected two bools at " ++ showPos pos ++ ", got " ++ showType t ++ " and " ++ showType t'
 
 typeCheckExpr (EOr pos e e') = typeCheckExpr (EAnd pos e e')
 
 typeCheckExpr (ELambdaBlock pos args t block) = do
   env <- ask
   let t_args = map (targToType . argToTArg) args
-      no_auto = foldr (\t' res -> res && not (isTAuto t')) True t_args
+      proper = foldr (\t' res -> res && not (isTAuto t') && not (isTVoid t') && not (isTFunWithTAuto t')) True t_args
       id_args = map argToId args
-  if not no_auto then
-    throwError $ "Auto used as argument type at " ++ showPos pos
+  if not proper then
+    throwError $ "Argument type is void or contains auto at " ++ showPos pos
   else do
     let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ zip id_args t_args
         t_fun = TFun pos (map argToTArg args) t
@@ -708,10 +725,10 @@ typeCheckExpr (ELambdaBlock pos args t block) = do
 typeCheckExpr (ELambdaExpr pos args t e) = do
   env <- ask
   let t_args = map (targToType . argToTArg) args
-      no_auto = foldr (\t' res -> res && not (isTAuto t')) True t_args
+      proper = foldr (\t' res -> res && not (isTAuto t') && not (isTVoid t') && not (isTFunWithTAuto t')) True t_args
       id_args = map argToId args
-  if not no_auto then
-    throwError $ "Auto used as argument type at " ++ showPos pos
+  if not proper then
+    throwError $ "Argument type is void or contains auto at " ++ showPos pos
   else do
     let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ zip id_args t_args
         t_fun = TFun pos (map argToTArg args) t
