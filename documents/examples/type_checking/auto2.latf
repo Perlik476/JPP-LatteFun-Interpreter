@@ -11,11 +11,16 @@ int main() {
     auto g = f(-5);
     println(g(10));
 
-    g = lambda (int z) -> int . z + 1;
-    println(g(10));
-
     g = f(5);
     println(g(10));
+
+    g = lambda (int z) -> int . z + 1; // OK
+    println(g(10));
+
+    // g = lambda (int ref z) -> int . z + 1; // error
+    // g = lambda (int z) -> bool . z > 0; // error
+    g = lambda (int z, int y) -> int . z + y; // error
+    // g = lambda () -> int . 1; // error
 
     return 0;
 }

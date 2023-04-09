@@ -7,7 +7,7 @@ module Main where
 
 import Prelude
 import System.Environment ( getArgs )
-import System.Exit        ( exitFailure )
+import System.Exit
 import Control.Monad      ( when )
 
 import AbsLatteFun
@@ -36,8 +36,6 @@ run v p s =
   case p ts of
     Left err -> do
       putStrLn "\nParse              Failed...\n"
-      putStrV v "Tokens:"
-      mapM_ (putStrV v . showPosToken . mkPosToken) ts
       putStrLn err
       exitFailure
     Right tree -> do
@@ -45,7 +43,7 @@ run v p s =
       if success then
         execProgram tree
       else
-        pure ()
+        exitFailure
   where
   ts = myLexer s
   showPosToken ((l,c),t) = concat [ show l, ":", show c, "\t", show t ]
@@ -96,7 +94,10 @@ execProgram p = do
     Left error -> "Runtime exception: " ++ error ++ "\n"
     Right v -> "Error: incorrect return value " ++ show v ++ "\n"
   putStr $ "Store size at exit: " ++ show (length store) ++ "\n"
-  pure ()
+  case val of
+    Right (VInt n) -> exitWith $ if n == 0 then ExitSuccess else ExitFailure $ fromIntegral n
+    _ -> exitFailure
+   
 
 evalProg :: Program -> IM Value
 evalProg (PProgram pos inits) = do
@@ -415,6 +416,7 @@ sameType (TStr _) (TStr _) = True
 sameType (TBool _) (TBool _) = True
 sameType (TVoid _) (TVoid _) = True
 sameType (TFun _ t_args t_ret) (TFun _ t_args' t_ret') = sameType t_ret t_ret'
+  && length t_args == length t_args'
   && foldr (\(t, t') res -> res && sameTypeArg t t') True (zip t_args t_args')
 sameType (TAuto _) _ = True
 sameType _ (TAuto _) = True
@@ -596,19 +598,23 @@ typeCheckExpr (EApp pos id es) = do
   case maybeType of
     Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined at " ++ showPos pos
     Just t@(TFun pos' t_args t') -> do
-      if foldr (\(t1, t2) res -> sameType t1 t2 && res) True (zip (map targToType t_args) ts) then
-          if foldr (
-            \(t_arg, e) res -> case t_arg of
-              TRefArg _ _ -> case e of
-                EVar _ _ -> res
-                _ -> False
-              _ -> res
-          ) True (zip t_args es) then
-            pure t'
+      if length t_args == length ts then
+        if foldr (\(t1, t2) res -> sameType t1 t2 && res) True (zip (map targToType t_args) ts) then
+            if foldr (
+              \(t_arg, e) res -> case t_arg of
+                TRefArg _ _ -> case e of
+                  EVar _ _ -> res
+                  _ -> False
+                _ -> res
+            ) True (zip t_args es) then
+              pure t'
+            else
+              throwError $ "Type mismatch: expected a ref argument at " ++ showPos pos
           else
-            throwError $ "Type mismatch: expected a ref argument at " ++ showPos pos
+            throwError $ "Type mismatch: one of arguments is of incorrect type at " ++ showPos pos
         else
-          throwError $ "Type mismatch: one of arguments is of incorrect type at " ++ showPos pos
+          throwError ("Inorrect number of arguments to function " ++ fromIdent id ++ " of type " ++ showType t ++ " at " ++ showPos pos ++ ".\n" 
+            ++ "Expected " ++ show (length t_args) ++ ", got " ++ show (length ts))
     Just TPrint -> do
       if length ts == 1 then do
         let t' = head ts
