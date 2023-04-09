@@ -154,40 +154,25 @@ evalStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do
 evalStmts (SAss pos id e : stmts) = do
   n <- evalExpr e
   env <- ask
-  let maybeLoc = Map.lookup id env
-  case maybeLoc of
-    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " not in scope"
-    Just loc -> do
-      modify $ Map.insert loc n
-      evalStmts stmts
+  let Just loc = Map.lookup id env
+  modify $ Map.insert loc n
+  evalStmts stmts
 
 evalStmts (SIncr pos id : stmts) = do
   env <- ask
-  let maybeLoc = Map.lookup id env
-  case maybeLoc of
-    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " not in scope"
-    Just loc -> do
-      store <- get
-      let maybeValue = Map.lookup loc store
-      case maybeValue of
-        Nothing -> throwError "impossible"
-        Just (VInt n) -> do
-          modify $ Map.insert loc (VInt $ n + 1)
-          evalStmts stmts
+  let Just loc = Map.lookup id env
+  store <- get
+  let Just (VInt n) = Map.lookup loc store
+  modify $ Map.insert loc (VInt $ n + 1)
+  evalStmts stmts
 
 evalStmts (SDecr pos id : stmts) = do
   env <- ask
-  let maybeLoc = Map.lookup id env
-  case maybeLoc of
-    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " not in scope"
-    Just loc -> do
-      store <- get
-      let maybeValue = Map.lookup loc store
-      case maybeValue of
-        Nothing -> throwError "impossible"
-        Just (VInt n) -> do
-          modify $ Map.insert loc (VInt $ n - 1)
-          evalStmts stmts
+  let Just loc = Map.lookup id env
+  store <- get
+  let Just (VInt n) = Map.lookup loc store
+  modify $ Map.insert loc (VInt $ n - 1)
+  evalStmts stmts
 
 evalStmts (SRet pos e : stmts) = evalExpr e
 
@@ -256,42 +241,33 @@ evalStmts [] = pure VNothing
 evalExpr :: Expr -> IM Value
 evalExpr (EVar pos id) = do
   env <- ask
-  let maybeLoc = Map.lookup id env
-  case maybeLoc of
-    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " is not defined (env) at " ++ showPos pos
-    Just loc -> do
-      store <- get
-      let maybeVar = Map.lookup loc store
-      case maybeVar of
-        Nothing -> throwError $ "Variable " ++ fromIdent id ++ " is not defined (store) at " ++ showPos pos
-        Just v -> pure v
+  let Just loc = Map.lookup id env
+  store <- get
+  let Just v = Map.lookup loc store
+  pure v
 
 evalExpr (EApp pos id es) = do
   env <- ask
-  ns <- mapM evalExpr es -- TODO - to raczej nie powinno się zawsze obliczać? to może generować potencjalne niechciane efekty uboczne
-  let maybeLoc = Map.lookup id env
-  case maybeLoc of
-    Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined (at " ++ showPos pos ++ ")"
-    Just loc -> do
-      store <- get
-      let maybeFun = Map.lookup loc store
-      case maybeFun of
-        Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined (at " ++ showPos pos ++ ")"
-        Just (VFun t args f env') -> do
-          let (store', env'') = foldr (
-                \((e, n), arg) (store'', env''') -> case arg of
-                  CopyArg _ t' arg_id ->
-                    let loc' = newloc store'' in
-                    (Map.insert loc' n store'', Map.insert arg_id loc' env''')
-                  RefArg _ t' arg_id ->
-                    let EVar _ var_id = e in
-                    let maybeLoc' = Map.lookup var_id env in
-                    case maybeLoc' of
-                      Just loc' -> (store'', Map.insert arg_id loc' env''')
-                ) (store, env') (zip (zip es ns) args)
-          modify $ const store'
-          local (const env'') (evalBlock f)
-        Just value -> throwError $ "Internal error: expected function in store at " ++ showPos pos ++ ", got " ++ show value
+  ns <- mapM evalExpr es
+  let Just loc = Map.lookup id env
+  store <- get
+  let Just value = Map.lookup loc store
+  case value of
+    (VFun t args f env') -> do
+      let (store', env'') = foldr (
+            \((e, n), arg) (store'', env''') -> case arg of
+              CopyArg _ t' arg_id ->
+                let loc' = newloc store'' in
+                (Map.insert loc' n store'', Map.insert arg_id loc' env''')
+              RefArg _ t' arg_id ->
+                let EVar _ var_id = e in
+                let maybeLoc' = Map.lookup var_id env in
+                case maybeLoc' of
+                  Just loc' -> (store'', Map.insert arg_id loc' env''')
+            ) (store, env') (zip (zip es ns) args)
+      modify $ const store'
+      local (const env'') (evalBlock f)
+    _ -> throwError $ "Internal error: expected function in store at " ++ showPos pos ++ ", got " ++ show value
 
 evalExpr (EAppLambda pos lambda es) = do
   f <- evalExpr lambda
