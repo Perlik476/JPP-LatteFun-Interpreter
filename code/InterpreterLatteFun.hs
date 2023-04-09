@@ -100,7 +100,7 @@ execProgram p = do
 
 evalProg :: Program -> IM Value
 evalProg (PProgram pos inits) = do
-  evalStmts $ [SInit pos init | init <- inits] ++ [SExp pos $ EApp pos (Ident "main") []]
+  evalStmts $ [SInit pos init | init <- inits] ++ [SRet pos $ EApp pos (Ident "main") []]
 
 evalBlock :: Block -> IM Value
 evalBlock (SBlock pos stmts) = evalStmts stmts
@@ -120,6 +120,7 @@ getDefaultForType (TFun _ targs t) = VFun t args block Map.empty
                   TCopyArg p t' -> CopyArg p t' (Ident $ show n)
                   TRefArg p t' -> RefArg p t' (Ident $ show n)
               ) targs [1..]
+getDefaultForType (TVoid _) = VVoid
 
 evalStmts :: [Stmt] -> IM Value
 
@@ -214,8 +215,6 @@ evalStmts swhile@(SWhile pos e block : stmts) = do
     VBool False -> do
       evalStmts stmts
 
-evalStmts (SExp pos e : []) = evalExpr e
-
 evalStmts (SExp pos e : stmts) = do
   evalExpr e
   evalStmts stmts
@@ -266,6 +265,7 @@ evalExpr (EApp pos id es) = do
                   Just loc' -> (store'', Map.insert arg_id loc' env''')
             ) (store, env') (zip (zip es ns) args)
       modify $ const store'
+      -- local (const env'') (evalBlock f)
       v <- local (const env'') (evalBlock f)
       case v of
         VNothing -> pure $ getDefaultForType t
@@ -420,8 +420,6 @@ sameType (TBool _) (TBool _) = True
 sameType (TVoid _) (TVoid _) = True
 sameType (TFun _ t_args t_ret) (TFun _ t_args' t_ret') = sameType t_ret t_ret'
   && foldr (\(t, t') res -> res && sameTypeArg t t') True (zip t_args t_args')
-sameType (TAuto _) (TVoid _) = False
-sameType (TVoid _) (TAuto _) = False
 sameType (TAuto _) _ = True
 sameType _ (TAuto _) = True
 sameType TPrint TPrint = True
@@ -482,9 +480,10 @@ typeCheckStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do -- TODO
     let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ (id, t_fun):zip id_args t_args
         t_fun = TFun pos' (map argToTArg args) t
     t' <- local (const env') (typeCheckBlock block)
-    let t_fun' = TFun pos' (map argToTArg args) t'
-        env'' = Map.insert id t_fun' env'
-    if sameType t t' || (isTAuto t' && not (isTAuto t)) then
+    if (sameType t t' && not (isTAuto t')) || (isTAuto t' && not (isTAuto t)) then do
+      let t_real = if not (isTAuto t) then t else t'
+          t_fun' = TFun pos' (map argToTArg args) t_real
+          env'' = Map.insert id t_fun' env'
       local (const env'') (typeCheckStmts stmts)
     else
       throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t'
@@ -525,10 +524,11 @@ typeCheckStmts (SCond pos e block : stmts) = do
     TBool _ -> do
       t1 <- typeCheckBlock block
       t2 <- typeCheckStmts stmts
-      if sameType t1 t2 && not (isTAuto t2) then
-        pure t2
+      if sameType t1 t2 then
+        if not (isTAuto t1) then pure t1
+        else pure t2
       else
-        throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos
+        throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos ++ ": " ++ showType t1 ++ " and " ++ showType t2
     _ -> do
       throwError $ "Type mismatch: " ++ showType t ++ " is not of type bool at " ++ showPos pos
 
@@ -538,15 +538,15 @@ typeCheckStmts (SCondElse pos e block block': stmts) = do
     TBool _ -> do
       t1 <- typeCheckBlock block
       t2 <- typeCheckBlock block'
-      if sameType t1 t2 && not (isTAuto t1) && not (isTAuto t2) then
-        pure t1
-      else
-        if isTAuto t1 || isTAuto t2 then do
-          t3 <- typeCheckStmts stmts
-          if sameType t1 t2 && sameType t2 t3 && not (isTAuto t3) then
-            pure t3
-          else
-            throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos
+      if sameType t1 t2 then
+        if not (isTAuto t1) then pure t1
+        else pure t2
+      else do
+        t3 <- typeCheckStmts stmts
+        if sameType t1 t2 && sameType t2 t3 then
+          if not (isTAuto t1) then pure t1
+          else if not (isTAuto t2) then pure t2
+          else pure t3
         else
           throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos
     _ -> do
@@ -558,8 +558,9 @@ typeCheckStmts (SWhile pos e block : stmts) = do
     TBool _ -> do
       t1 <- typeCheckBlock block
       t2 <- typeCheckStmts stmts
-      if sameType t1 t2 && not (isTAuto t2) then
-        pure t2
+      if sameType t1 t2 then
+        if not (isTAuto t1) then pure t1
+        else pure t2
       else
         throwError $ "Type mismatch: Different return values in function definition at " ++ showPos pos
     _ -> do
@@ -699,21 +700,27 @@ typeCheckExpr (ELambdaBlock pos args t block) = do
     let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ zip id_args t_args
         t_fun = TFun pos (map argToTArg args) t
     t' <- local (const env') (typeCheckBlock block)
-    let t_fun' = TFun pos (map argToTArg args) t'
-    if sameType t t' || (isTAuto t' && not (isTAuto t)) then
+    if (sameType t t' && not (isTAuto t')) || (isTAuto t' && not (isTAuto t)) then do
+      let t_real = if not (isTAuto t) then t else t'
+          t_fun' = TFun pos (map argToTArg args) t_real
       pure t_fun'
     else
       throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t'
   -- env <- ask
   -- let t_args = map (targToType . argToTArg) args
+  --     no_auto = foldr (\t' res -> res && not (isTAuto t')) True t_args
   --     id_args = map argToId args
-  --     env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env (zip id_args t_args)
-  --     f = TFun pos (map argToTArg args) t
-  -- t' <- local (const env') (typeCheckBlock block)
-  -- if sameType t' t || isTVoid t' then
-  --   pure $ TFun pos (map argToTArg args) t
-  -- else
-  --   throwError $ "Type mismatch: Expected " ++ showType t ++ " at " ++ showPos pos ++ ", got " ++ showType t'
+  -- if not no_auto then
+  --   throwError $ "Auto used as argument type at " ++ showPos pos
+  -- else do
+  --   let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ zip id_args t_args
+  --       t_fun = TFun pos (map argToTArg args) t
+  --   t' <- local (const env') (typeCheckBlock block)
+  --   let t_fun' = TFun pos (map argToTArg args) t'
+  --   if sameType t t' || (isTAuto t' && not (isTAuto t)) then
+  --     pure t_fun'
+  --   else
+  --     throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t'
 
 typeCheckExpr (ELambdaExpr pos args t e) = do
   env <- ask
@@ -726,21 +733,27 @@ typeCheckExpr (ELambdaExpr pos args t e) = do
     let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ zip id_args t_args
         t_fun = TFun pos (map argToTArg args) t
     t' <- local (const env') (typeCheckExpr e)
-    let t_fun' = TFun pos (map argToTArg args) t'
-    if sameType t t' || (isTAuto t' && not (isTAuto t)) then
+    if (sameType t t' && not (isTAuto t')) || (isTAuto t' && not (isTAuto t)) then do
+      let t_real = if not (isTAuto t) then t else t'
+          t_fun' = TFun pos (map argToTArg args) t_real
       pure t_fun'
     else
       throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t'
   -- env <- ask
   -- let t_args = map (targToType . argToTArg) args
+  --     no_auto = foldr (\t' res -> res && not (isTAuto t')) True t_args
   --     id_args = map argToId args
-  --     env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env (zip id_args t_args)
-  --     f = TFun pos (map argToTArg args) t
-  -- t' <- local (const env') (typeCheckExpr e)
-  -- if sameType t' t || isTVoid t' then
-  --   pure $ TFun pos (map argToTArg args) t
-  -- else
-  --   throwError $ "Type mismatch: Expected " ++ showType t ++ " at " ++ showPos pos ++ ", got " ++ showType t'
+  -- if not no_auto then
+  --   throwError $ "Auto used as argument type at " ++ showPos pos
+  -- else do
+  --   let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ zip id_args t_args
+  --       t_fun = TFun pos (map argToTArg args) t
+  --   t' <- local (const env') (typeCheckExpr e)
+  --   let t_fun' = TFun pos (map argToTArg args) t'
+  --   if sameType t t' || (isTAuto t' && not (isTAuto t)) then
+  --     pure t_fun'
+  --   else
+  --     throwError $ "Type mismatch: " ++ showType t ++ " and " ++ showType t'
 
 typeCheckExpr (EVal pos VNothing) = pure $ TVoid pos
 
