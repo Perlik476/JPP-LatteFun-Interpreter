@@ -1,0 +1,19 @@
+int main() {
+    println(1 + 2); // 3
+    int x = 2 * (3 + 1);
+    println(x / 2); // 4
+    println(x % 2); // 0
+
+    bool b = true;
+    if (b) {
+        println("b is true"); // <-
+    }
+    else {
+        println("b is false");
+    }
+
+    string s = "hello";
+    println(s); // hello
+
+    return 0;
+}

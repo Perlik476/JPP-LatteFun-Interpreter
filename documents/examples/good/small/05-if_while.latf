@@ -1,0 +1,29 @@
+int main() {
+    int n = 10;
+    int a = 0;
+    int b = 1;
+    int i = 0;
+    
+    while (i < n) {
+        int c = a + b;
+        a = b;
+        b = c;
+        i++;
+    }
+    int x = a;
+
+    if (x > 50) {
+        println("x is greater than 50"); // <-
+        if (x > 100) {
+            println("x is greater than 100");
+        }
+        else {
+            println("x is less than or equal to 100"); // <-
+        }
+    }
+    else {
+        println("x is less than or equal to 50");
+    }
+
+    return 0;
+}

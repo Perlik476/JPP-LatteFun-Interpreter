@@ -1,0 +1,12 @@
+int fun(int x) {
+    return x + 1;
+}
+
+int main() {
+    x = 5; // error - unknown identifier
+    f(); // error - unknown identifier
+    fun(y); // error - unknown identifier
+    int x = y; // error - unknown identifier
+
+    return 0;
+}

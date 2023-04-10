@@ -13,14 +13,6 @@ int fib(int n) {
 }
 
 int main() {
-    int x = fib(10);
-
-    if (x > 50) {
-        println("x is greater than 50"); // <-
-    }
-    else {
-        println("x is less than or equal to 50");
-    }
-
-    return 0;
+    int x = fib;
+    println(x); // 55
 }

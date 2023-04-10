@@ -1,0 +1,25 @@
+int f(int x) {
+    int g(int y) {
+        return x + y;
+    }
+
+    x--;
+    return g(1);
+}
+
+void g(int x, int y) {
+    int h(int x) {
+        println(x); // value of y
+        x++;
+    }
+
+    h(y); 
+    println(x); // old value of x
+    println(y); // old value of y
+}
+
+int main() {
+    println(f(5)); // 5
+
+    return 0;
+}
