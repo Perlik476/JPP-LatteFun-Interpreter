@@ -9,6 +9,16 @@ auto g() {
     return false;
 }
 
+auto fib(int n) {
+    if (n < 2) {
+        return n;
+    }
+    else {
+        return fib(5);
+    }
+    return fib(1);
+}
+
 int main() {
     println((f(true))(0));
     
