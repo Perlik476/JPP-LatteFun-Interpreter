@@ -3,6 +3,7 @@
 # Makefile for building the parser and test program.
 
 GHC        = ghc
+GHC_OPTS   = -outputdir ./build
 HAPPY      = happy
 HAPPY_OPTS = --array --info --ghc --coerce
 ALEX       = alex
@@ -17,18 +18,6 @@ ALEX_OPTS  = --ghc
 all : InterpreterLatteFun
 
 # Rules for building the parser.
-
-AbsLatteFun.hs LexLatteFun.x ParLatteFun.y PrintLatteFun.hs TestLatteFun.hs InterpreterLatteFun.hs : LatteFun.cf
-	bnfc --haskell --functor LatteFun.cf
-
-%.hs : %.y
-	${HAPPY} ${HAPPY_OPTS} $<
-
-%.hs : %.x
-	${ALEX} ${ALEX_OPTS} $<
-
-TestLatteFun : AbsLatteFun.hs LexLatteFun.hs ParLatteFun.hs PrintLatteFun.hs TestLatteFun.hs
-	${GHC} ${GHC_OPTS} $@
 
 InterpreterLatteFun : AbsLatteFun.hs LexLatteFun.hs ParLatteFun.hs PrintLatteFun.hs InterpreterLatteFun.hs
 	${GHC} ${GHC_OPTS} $@
