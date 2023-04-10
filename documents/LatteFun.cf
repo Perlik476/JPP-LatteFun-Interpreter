@@ -58,7 +58,15 @@ TBool.      Type ::= "bool" ;
 
 TVoid.      Type ::= "void" ;
 
-TFun.       Type ::= "[" "(" [Arg] ")" "->" Type "]" ;
+TFun.       Type ::= "[" "(" [TArg] ")" "->" Type "]" ;
+
+TAuto.      Type ::= "auto" ;
+
+TCopyArg. 	TArg ::= Type;
+
+TRefArg.    TArg ::= Type "ref";
+
+separator   TArg "," ;
 
 separator  Type "," ;
 
