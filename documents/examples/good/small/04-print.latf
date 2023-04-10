@@ -3,6 +3,7 @@ int main() {
     println(5 + 2); // 7
     int x = 5;
     println(x); // 5
+    print(4); println(2); // 42
 
     bool b = true;
     println(b); // true

@@ -13,6 +13,6 @@ int fib(int n) {
 }
 
 int main() {
-    int x = fib;
+    int x = fib(10);
     println(x); // 55
 }

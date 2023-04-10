@@ -21,5 +21,12 @@ void g(int x, int y) {
 int main() {
     println(f(5)); // 5
 
+    g(3, 7);
+    /*
+    7
+    3
+    7
+    */
+
     return 0;
 }
