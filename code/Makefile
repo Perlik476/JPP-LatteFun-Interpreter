@@ -19,7 +19,7 @@ all : InterpreterLatteFun
 
 # Rules for building the parser.
 
-InterpreterLatteFun : AbsLatteFun.hs LexLatteFun.hs ParLatteFun.hs PrintLatteFun.hs InterpreterLatteFun.hs
+InterpreterLatteFun : AbsLatteFun.hs LexLatteFun.hs ParLatteFun.hs PrintLatteFun.hs Interpreter.hs TypeChecker.hs InterpreterLatteFun.hs
 	${GHC} ${GHC_OPTS} $@
 
 # Rules for cleaning generated files.
