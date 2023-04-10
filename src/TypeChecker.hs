@@ -30,18 +30,42 @@ typeCheck p = do
   result <- runReaderT (runExceptT (typeCheckProg p)) initTEnv
   case result of
     Left error -> do
-      putStr "Static type checking failed.\n" 
+      putStr "Static type checking failed.\n"
       putStr $ error ++ "\n"
       pure False
     Right _ -> pure True
 
 typeCheckProg :: Program -> TypeMonad
 typeCheckProg (PProgram pos inits) = do
+  initsContainMain inits
   typeCheckStmts [SInit (getInitPos init) init | init <- inits]
+
+initsContainMain :: [Init] -> TypeMonad
+initsContainMain ((IVarDef pos _ id _) : inits) =
+  if fromIdent id /= "main" then initsContainMain inits
+  else throwError $ "Illegal toplevel variable name main at " ++ showPos pos
+initsContainMain ((IFnDef pos t id args block) : inits) = do
+  if fromIdent id /= "main" then initsContainMain inits
+  else
+    if not $ sameType t (TInt Nothing) then
+      throwError $ "Function main at " ++ showPos pos ++ " should have return type int."
+    else if not (null args) then
+      throwError $ "Function main at " ++ showPos pos ++ " should have no arguments."
+    else
+      if any (\ini -> fromIdent (getInitId ini) == "main") inits then
+        throwError "Multiple definitions of main in the toplevel."
+      else
+        pure t
+initsContainMain [] = throwError "Function main is not defined."
+
 
 getInitPos :: Init -> BNFC'Position
 getInitPos (IVarDef pos _ _ _) = pos
 getInitPos (IFnDef pos _ _ _ _) = pos
+
+getInitId :: Init -> Ident
+getInitId (IVarDef _ _ id _) = id
+getInitId (IFnDef _ _ id _ _) = id
 
 typeCheckBlock :: Block -> TypeMonad
 typeCheckBlock (SBlock pos stmts) = typeCheckStmts stmts
@@ -177,7 +201,7 @@ typeCheckStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do
           env'' = Map.insert id t_fun' env'
       local (const env'') (typeCheckStmts stmts)
     else
-      throwError $ 
+      throwError $
         if isTAuto t && isTAuto t' then
           errorDeclarationFailureVariable pos id "inferring of auto type failed in function definition"
         else
@@ -194,7 +218,7 @@ typeCheckStmts (SAss pos id e : stmts) = do
       Nothing -> throwError $ errorNotInScope pos id
       Just t -> do
         if not $ sameType t t_e then
-          throwError $ errorTypeMismatch pos ("Cannot assign expression of type " ++ showType t_e ++ " to variable " 
+          throwError $ errorTypeMismatch pos ("Cannot assign expression of type " ++ showType t_e ++ " to variable "
                                               ++ fromIdent id ++ " of type " ++ showType t)
         else
           typeCheckStmts stmts
@@ -284,7 +308,7 @@ checkArgumentTypes :: [Type] -> [Type] -> Maybe (Integer, Type, Type)
 checkArgumentTypes = checkArgumentTypes' 1
 
 checkArgumentTypes' :: Integer -> [Type] -> [Type] -> Maybe (Integer, Type, Type)
-checkArgumentTypes' n (t:ts) (t':ts') = 
+checkArgumentTypes' n (t:ts) (t':ts') =
   if sameType t t' then checkArgumentTypes' (n + 1) ts ts'
   else Just (n, t, t')
 checkArgumentTypes' _ _ _ = Nothing
@@ -293,9 +317,9 @@ checkRefArguments :: [TArg] -> [Expr] -> Maybe Integer
 checkRefArguments = checkRefArguments' 1
 
 checkRefArguments' :: Integer -> [TArg] -> [Expr] -> Maybe Integer
-checkRefArguments' n (t:ts) (e:es) = 
+checkRefArguments' n (t:ts) (e:es) =
   case t of
-    TRefArg _ _ -> 
+    TRefArg _ _ ->
       case e of
         EVar _ _ -> checkRefArguments' (n + 1) ts es
         _ -> Just n
@@ -323,8 +347,8 @@ typeCheckExpr (EApp pos id es) = do
           Nothing ->
             case checkRefArguments t_args es of
               Nothing -> pure t'
-              Just n -> 
-                throwError (errorTypeMismatch pos $ "Expected a variable as argument number " ++ show n 
+              Just n ->
+                throwError (errorTypeMismatch pos $ "Expected a variable as argument number " ++ show n
                   ++ " applied to the function " ++ fromIdent id ++ ", because it's a reference type")
           Just (n, t1, t2) ->
             throwError (errorTypeMismatch pos $ "Argument number " ++ show n ++ " applied to the function "
@@ -421,7 +445,7 @@ typeCheckExpr (ELambdaBlock pos args t block) = do
           t_fun' = TFun pos (map fromArgToTArg args) t_real
       pure t_fun'
     else
-      throwError $ 
+      throwError $
         if isTAuto t && isTAuto t' then
           errorDeclarationFailure pos "inferring of auto type failed in function definition"
         else
