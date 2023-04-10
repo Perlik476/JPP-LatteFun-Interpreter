@@ -122,6 +122,20 @@ fromTArgToType :: TArg -> Type
 fromTArgToType (TCopyArg _ t) = t
 fromTArgToType (TRefArg _ t) = t
 
+errorTypeMismatch :: BNFC'Position -> String -> String
+errorTypeMismatch pos message = "Type mismatch at " ++ showPos pos ++ ": " ++ message
+
+errorDeclarationFailure :: BNFC'Position -> String -> String
+errorDeclarationFailure pos message = "Declaration failure at " ++ showPos pos ++ ": " ++ message
+
+errorDeclarationFailureVariable :: BNFC'Position -> Ident -> String -> String
+errorDeclarationFailureVariable pos var message = errorDeclarationFailure pos (": variable " ++ fromIdent var ++ " " ++ message)
+
+errorAssignmentFailureVoid :: BNFC'Position -> Ident -> String
+errorAssignmentFailureVoid pos var = "Assignment failure at " ++ showPos pos ++ ": cannot assign void expression to variable " ++ fromIdent var
+
+errorNotInScope :: BNFC'Position -> Ident -> String
+errorNotInScope pos var = "Reference before delaration at " ++ showPos pos ++ ": variable " ++ fromIdent var ++ " not in scope"
 
 typeCheckStmts :: [Stmt] -> TypeMonad
 typeCheckStmts (SEmpty pos : stmts) = typeCheckStmts stmts
@@ -132,22 +146,23 @@ typeCheckStmts (SBStmt pos block : stmts) = do
 
 typeCheckStmts (SDecl pos t id : stmts) = do
   case t of
-    TAuto _ -> throwError $ "Declaration failure at " ++ showPos pos ++ ": auto used without initialization"
+    TAuto _ -> throwError $ errorDeclarationFailure pos $ "declared variable " ++ fromIdent id ++ " of auto type without initialization"
+    TVoid _ -> throwError $ errorDeclarationFailure pos $ "declared variable " ++ fromIdent id ++ " of void type"
     _ -> local (Map.insert id t) (typeCheckStmts stmts)
 
 typeCheckStmts (SInit pos (IVarDef pos' t id e) : stmts) = do
   if isTVoid t then
-    throwError $ "Declaration failure at " ++ showPos pos ++ ": variable " ++ fromIdent id ++ " has type void"
+    throwError $ errorDeclarationFailureVariable pos id "has type void"
   else if isTFunWithTAuto t then
-    throwError $ "Declaration failure at " ++ showPos pos ++ ": variable " ++ fromIdent id ++ " has functional type with auto argument or return value"
+    throwError $ errorDeclarationFailureVariable pos id "has functional type with auto argument or return value"
   else do
     t_e <- typeCheckExpr e
     if isTVoid t_e then
-      throwError $ "Assignment failure at " ++ showPos pos ++ ": cannot assign void expression to variable " ++ fromIdent id
+      throwError $ errorAssignmentFailureVoid pos id
     else if sameType t t_e || isTAuto t then
       local (Map.insert id t_e) (typeCheckStmts stmts)
     else
-      throwError $ "Type mismatch at " ++ showPos pos ++ ": " ++ showType t ++ " and " ++ showType t_e
+      throwError $ errorTypeMismatch pos $ showType t ++ " and " ++ showType t_e
 
 typeCheckStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do
   env <- ask
@@ -155,7 +170,7 @@ typeCheckStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do
       proper = foldr (\t' res -> res && not (isTAuto t') && not (isTVoid t') && not (isTFunWithTAuto t')) True t_args
       id_args = map fromArgToId args
   if not proper then
-    throwError $ "Declaration failure at " ++ showPos pos ++ ": argument type is void or contains auto"
+    throwError $ errorDeclarationFailureVariable pos id "argument type is void or contains auto"
   else do
     let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ (id, t_fun):zip id_args t_args
         t_fun = TFun pos' (map fromArgToTArg args) t
@@ -168,22 +183,22 @@ typeCheckStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do
     else
       throwError $ 
         if isTAuto t && isTAuto t' then
-          "Declaration failure at " ++ showPos pos ++ ": inferring of auto type failed in function definition"
+          errorDeclarationFailureVariable pos id "inferring of auto type failed in function definition"
         else
-          "Type mismatch at " ++ showPos pos ++ ": " ++ showType t ++ " and " ++ showType t'
+          errorTypeMismatch pos $ showType t ++ " and " ++ showType t'
 
 typeCheckStmts (SAss pos id e : stmts) = do
   t_e <- typeCheckExpr e
   if isTVoid t_e then
-    throwError $ "Assignment failure at " ++ showPos pos ++ ": cannot assign void expression to variable " ++ fromIdent id
+    throwError $ errorAssignmentFailureVoid pos id
   else do
     env <- ask
     let maybeType = Map.lookup id env
     case maybeType of
-      Nothing -> throwError $ "Variable " ++ fromIdent id ++ " not in scope at " ++ showPos pos
+      Nothing -> throwError $ errorNotInScope pos id
       Just t -> do
         if not $ sameType t t_e then
-          throwError $ "Type mismatch at " ++ showPos pos ++ ": " ++ showType t ++ " and " ++ showType t_e
+          throwError $ errorTypeMismatch pos $  showType t ++ " and " ++ showType t_e
         else
           typeCheckStmts stmts
 
@@ -191,11 +206,11 @@ typeCheckStmts (SIncr pos id : stmts) = do
   env <- ask
   let maybeType = Map.lookup id env
   case maybeType of
-    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " not in scope at " ++ showPos pos
+    Nothing -> throwError $ errorNotInScope pos id
     Just t -> do
       let t_e = TInt pos
       if not $ sameType t t_e then
-        throwError $ "Type mismatch at " ++ showPos pos ++ ": " ++ showType t ++ " is not of type int"
+        throwError $ errorTypeMismatch pos $  showType t ++ " is not of type int"
       else
         typeCheckStmts stmts
 
@@ -214,9 +229,9 @@ typeCheckStmts (SCond pos e block : stmts) = do
       if sameType t1 t2 then
         pure t2
       else
-        throwError $ "Type mismatch at " ++ showPos pos ++ ": Different return values in function definition: " ++ showType t1 ++ " and " ++ showType t2
+        throwError $ errorTypeMismatch pos $ "Different return values in function definition: " ++ showType t1 ++ " and " ++ showType t2
     _ -> do
-      throwError $ "Type mismatch at " ++ showPos pos ++ ": " ++ showType t ++ " is not of type bool"
+      throwError $ errorTypeMismatch pos $  showType t ++ " is not of type bool"
 
 typeCheckStmts (SCondElse pos e block block': stmts) = do
   t <- typeCheckExpr e
@@ -229,9 +244,9 @@ typeCheckStmts (SCondElse pos e block block': stmts) = do
         if not (isTAuto t1) && not (isTAuto t2) then pure t1
         else pure t3
       else
-        throwError $ "Type mismatch at" ++ showPos pos ++ ": Different return values in function definition"
+        throwError $ errorTypeMismatch pos $ "Different return values in function definition"
     _ -> do
-      throwError $ "Type mismatch at " ++ showPos pos ++ ": " ++ showType t ++ " is not of type bool"
+      throwError $ errorTypeMismatch pos $  showType t ++ " is not of type bool"
 
 typeCheckStmts (SWhile pos e block : stmts) = do
   t <- typeCheckExpr e
@@ -242,9 +257,9 @@ typeCheckStmts (SWhile pos e block : stmts) = do
       if sameType t1 t2 then
         pure t2
       else
-        throwError $ "Type mismatch at " ++ showPos pos ++ ": Different return values in function definition: " ++ showType t1 ++ " and " ++ showType t2
+        throwError $ errorTypeMismatch pos $ "Different return values in function definition: " ++ showType t1 ++ " and " ++ showType t2
     _ -> do
-      throwError $ "Type mismatch at " ++ showPos pos ++ ": " ++ showType t ++ " is not of type bool"
+      throwError $ errorTypeMismatch pos $  showType t ++ " is not of type bool"
 
 typeCheckStmts (SExp pos e : []) = do
   typeCheckExpr e
@@ -260,7 +275,7 @@ typeCheckStmts (SPrint pos e : stmts) = do
     TInt _ -> typeCheckStmts stmts
     TBool _ -> typeCheckStmts stmts
     TStr _ -> typeCheckStmts stmts
-    _ -> throwError $ "Type mismatch at " ++ showPos pos ++ ": " ++ showType t ++ " is not of basic type (bool/int/string)"
+    _ -> throwError $ errorTypeMismatch pos $  showType t ++ " is not of basic type (bool/int/string)"
 
 
 typeCheckStmts (SPrintln pos e : stmts) = typeCheckStmts (SPrint pos e : stmts)
@@ -296,7 +311,7 @@ typeCheckExpr (EVar pos id) = do
   env <- ask
   let maybeType = Map.lookup id env
   case maybeType of
-    Nothing -> throwError $ "Variable " ++ fromIdent id ++ " not in scope at " ++ showPos pos
+    Nothing -> throwError $ errorNotInScope pos id
     Just t -> pure t
 
 typeCheckExpr (EApp pos id es) = do
@@ -304,7 +319,7 @@ typeCheckExpr (EApp pos id es) = do
   ts <- mapM typeCheckExpr es
   let maybeType = Map.lookup id env
   case maybeType of
-    Nothing -> throwError $ "Function " ++ fromIdent id ++ " not in scope at " ++ showPos pos
+    Nothing -> throwError $ errorNotInScope pos id
     Just t@(TFun pos' t_args t') -> do
       if length t_args == length ts then
         case checkArgumentTypes (map fromTArgToType t_args) ts of
@@ -312,13 +327,13 @@ typeCheckExpr (EApp pos id es) = do
             case checkRefArguments t_args es of
               Nothing -> pure t'
               Just n -> 
-                throwError ("Type mismatch at " ++ showPos pos ++ ": expected a variable as argument number " ++ show n 
+                throwError (errorTypeMismatch pos $ "expected a variable as argument number " ++ show n 
                   ++ " applied to the function " ++ fromIdent id ++ ", because it's a reference type")
           Just (n, t1, t2) ->
-            throwError ("Type mismatch at " ++ showPos pos ++ ": argument number " ++ show n ++ " applied to the function "
+            throwError (errorTypeMismatch pos $ "argument number " ++ show n ++ " applied to the function "
               ++ fromIdent id ++ " of type " ++ showType t ++ " is of type " ++ showType t2 ++ ", expected " ++ showType t1)
       else
-        throwError ("Type mismatch at " ++ showPos pos ++ ": inorrect number of arguments to function " ++ fromIdent id ++ " of type " ++ showType t ++ ". "
+        throwError (errorTypeMismatch pos $ "inorrect number of arguments to function " ++ fromIdent id ++ " of type " ++ showType t ++ ". "
           ++ "Expected " ++ show (length t_args) ++ ", got " ++ show (length ts))
     Just TPrint -> do
       if length ts == 1 then do
@@ -327,10 +342,10 @@ typeCheckExpr (EApp pos id es) = do
           TInt _ -> pure $ TVoid pos
           TBool _ -> pure $ TVoid pos
           TStr _ -> pure $ TVoid pos
-          _ -> throwError $ "Type mismatch at " ++ showPos pos ++ ": " ++ showType t' ++ " is not of basic type (bool/int/string)"
+          _ -> throwError $ errorTypeMismatch pos $  showType t' ++ " is not of basic type (bool/int/string)"
       else
-        throwError $ "Type mismatch at " ++ showPos pos ++ ": print requires exactly one argument"
-    Just t -> throwError $ "Type mismatch at " ++ showPos pos ++ ": expected a function, got " ++ showType t
+        throwError $ errorTypeMismatch pos $ "print requires exactly one argument"
+    Just t -> throwError $ errorTypeMismatch pos $ "expected a function, got " ++ showType t
 
 typeCheckExpr (EAppLambda pos lambda es) = do
   t <- typeCheckExpr lambda
@@ -349,20 +364,20 @@ typeCheckExpr (ENeg pos e) = do
   t <- typeCheckExpr e
   case t of
     TInt pos -> pure t
-    _ -> throwError $ "Type mismatch at " ++ showPos pos ++ ": Expected int, got " ++ showType t
+    _ -> throwError $ errorTypeMismatch pos $ "Expected int, got " ++ showType t
 
 typeCheckExpr (ENot pos e) = do
   t <- typeCheckExpr e
   case t of
     TBool pos -> pure t
-    _ -> throwError $ "Type mismatch at " ++ showPos pos ++ ": Expected bool, got " ++ showType t
+    _ -> throwError $ errorTypeMismatch pos $ "Expected bool, got " ++ showType t
 
 typeCheckExpr (EMul pos e op e') = do
   t <- typeCheckExpr e
   t' <- typeCheckExpr e'
   case (t, t') of
     (TInt _, TInt _) -> pure $ TInt pos
-    _ -> throwError $ "Type mismatch at " ++ showPos pos ++ ": Expected two ints, got " ++ showType t ++ " and " ++ showType t'
+    _ -> throwError $ errorTypeMismatch pos $ "Expected two ints, got " ++ showType t ++ " and " ++ showType t'
 
 typeCheckExpr (EAdd pos e op e') = typeCheckExpr (EMul pos e (OTimes pos) e')
 
@@ -375,20 +390,20 @@ typeCheckExpr (ERel pos e op e') = do
       case op of
         OEQU pos' -> pure $ TBool pos
         ONE pos' -> pure $ TBool pos
-        _ -> throwError $ "Type mismatch at " ++ showPos pos ++ ": Expected two ints, got " ++ showType t ++ " and " ++ showType t'
+        _ -> throwError $ errorTypeMismatch pos $ "Expected two ints, got " ++ showType t ++ " and " ++ showType t'
     (TStr _, TStr _) ->
       case op of
         OEQU pos' -> pure $ TBool pos
         ONE pos' -> pure $ TBool pos
-        _ -> throwError $ "Type mismatch at " ++ showPos pos ++ ": Expected two ints, got " ++ showType t ++ " and " ++ showType t'
-    _ -> throwError $"Type mismatch at " ++ showPos pos ++ ": Expected two basic type expressions (int/bool/string), got " ++ showType t ++ " and " ++ showType t'
+        _ -> throwError $ errorTypeMismatch pos $ "Expected two ints, got " ++ showType t ++ " and " ++ showType t'
+    _ -> throwError $errorTypeMismatch pos $ "Expected two basic type expressions (int/bool/string), got " ++ showType t ++ " and " ++ showType t'
 
 typeCheckExpr (EAnd pos e e') = do
   t <- typeCheckExpr e
   t' <- typeCheckExpr e'
   case (t, t') of
     (TBool _, TBool _) -> pure $ TBool pos
-    _ -> throwError $ "Type mismatch at " ++ showPos pos ++ ": Expected two bools, got " ++ showType t ++ " and " ++ showType t'
+    _ -> throwError $ errorTypeMismatch pos $ "Expected two bools, got " ++ showType t ++ " and " ++ showType t'
 
 typeCheckExpr (EOr pos e e') = typeCheckExpr (EAnd pos e e')
 
@@ -398,7 +413,7 @@ typeCheckExpr (ELambdaBlock pos args t block) = do
       proper = foldr (\t' res -> res && not (isTAuto t') && not (isTVoid t') && not (isTFunWithTAuto t')) True t_args
       id_args = map fromArgToId args
   if not proper then
-    throwError $ "Declaration failure at " ++ showPos pos ++ ": argument type is void or contains auto"
+    throwError $ errorDeclarationFailure pos "argument type is void or contains auto"
   else do
     let t'' = if isTFunWithTAuto t then TAuto pos else t
     let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ zip id_args t_args
@@ -411,9 +426,9 @@ typeCheckExpr (ELambdaBlock pos args t block) = do
     else
       throwError $ 
         if isTAuto t && isTAuto t' then
-          "Declaration failure at " ++ showPos pos ++ ": inferring of auto type failed in function definition"
+          errorDeclarationFailure pos "inferring of auto type failed in function definition"
         else
-          "Type mismatch at " ++ showPos pos ++ ": " ++ showType t ++ " and " ++ showType t'
+          errorTypeMismatch pos $  showType t ++ " and " ++ showType t'
 
 typeCheckExpr (ELambdaExpr pos args t e) = typeCheckExpr (ELambdaBlock pos args t (SBlock pos [SRet pos e]))
 

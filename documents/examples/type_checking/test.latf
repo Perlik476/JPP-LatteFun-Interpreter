@@ -29,7 +29,6 @@ int main() {
     add2 = pow2; // OK
     // add = pow2; // error - incompatible types
 
-    
     // my_curry = (lambda ([(int, int) -> int] f) -> auto {
     //     return lambda (int x) -> auto {
     //         return lambda (int ref y) -> auto {
