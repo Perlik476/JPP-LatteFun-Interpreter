@@ -1,0 +1,23 @@
+int main() {
+    println(5 + 2); // 7
+    println(5 - 2); // 3
+    println(5 * 2); // 10
+    println(5 / 2); // 2
+    println(5 % 2); // 1
+
+    println(5 == 2); // false
+    println(5 != 2); // true
+    println(5 < 2); // false
+    println(5 <= 2); // false
+    println(5 > 2); // true
+    println(5 >= 2); // true
+
+    println(true && false); // false
+    println(true || false); // true
+    println(!true); // false
+    println(true && !false); // true
+    println(true || !false); // true
+    println(!(!true)); // true
+
+    return 0;
+}

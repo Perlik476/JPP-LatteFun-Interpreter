@@ -1,0 +1,21 @@
+int main() {
+    int x;
+    println(x); // 0
+    x = 1;
+    println(x); // 1
+    int y = x;
+    println(y); // 1
+    y++;
+    println(y); // 2
+    println(x); // 1
+
+    bool b = true;
+    println(b); // true
+    bool b2 = b;
+    println(b2); // true
+    b2 = false;
+    println(b2); // false
+    println(b); // true
+
+    return 0;
+}

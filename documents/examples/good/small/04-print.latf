@@ -1,0 +1,18 @@
+int main() {
+    println(5); // 5
+    println(5 + 2); // 7
+    int x = 5;
+    println(x); // 5
+
+    bool b = true;
+    println(b); // true
+    println(!b); // false
+
+    string s = "hello";
+    println(s); // hello
+
+    string s2 = "world";
+    print(s); print(" "); println(s2); // hello world
+
+    return 0;
+}

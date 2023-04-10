@@ -5,11 +5,13 @@ int main() {
     println(x % 2); // 0
 
     bool b = true;
+    b = b || false;
+    b = b && (true && !b);
     if (b) {
-        println("b is true"); // <-
+        println("b is true");
     }
     else {
-        println("b is false");
+        println("b is false"); // <-
     }
 
     string s = "hello";
