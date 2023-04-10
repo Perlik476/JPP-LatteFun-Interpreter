@@ -19,7 +19,7 @@ int main() {
 
     // g = lambda (int ref z) -> int . z + 1; // error
     // g = lambda (int z) -> bool . z > 0; // error
-    g = lambda (int z, int y) -> int . z + y; // error
+    // g = lambda (int z, int y) -> int . z + y; // error
     // g = lambda () -> int . 1; // error
 
     return 0;

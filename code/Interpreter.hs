@@ -264,7 +264,7 @@ evalExpr (EMul pos e op e') = do
   case op of
     OTimes pos' -> pure $ VInt $ n * n'
     ODiv pos' -> if n' /= 0 then pure $ VInt $ n `div` n' else throwError $ "Division by zero at " ++ showPos pos
-    OMod pos' -> pure $ VInt $ n `mod` n'
+    OMod pos' -> if n' /= 0 then pure $ VInt $ n `mod` n' else throwError $ "Division by zero at " ++ showPos pos
 
 evalExpr (EAdd pos e op e') = do
   v <- evalExpr e
