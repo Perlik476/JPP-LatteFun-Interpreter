@@ -6,12 +6,9 @@ import Prelude
 import System.Environment ( getArgs )
 import System.Exit
 import Control.Monad      ( when )
+import Utils
 
 import AbsLatteFun
-import LexLatteFun
-import ParLatteFun
-import PrintLatteFun
-import SkelLatteFun  ()
 import Control.Monad.Reader
 import Control.Monad.Except
 import Control.Monad.State
@@ -26,21 +23,13 @@ maybeHead _ = Nothing
 newloc :: Store -> Loc
 newloc store = (+(-1)) $ maybe 0 id $ maybeHead (Map.keys store)
 
-type IM a = ExceptT String (ReaderT Env (StateT Store IO)) a
-type TM a = ExceptT String (ReaderT TEnv IO) a
-
-showPos :: BNFC'Position -> String
-showPos (Just (line, col)) = "line " ++ show line ++ ", column " ++ show col
-showPos Nothing = "unknown location"
+type InterpreterMonad = ExceptT String (ReaderT Env (StateT Store IO)) Value
 
 fromIdent :: Ident -> String
 fromIdent (Ident s) = s
 
 initEnv :: Env
 initEnv = Map.insert (Ident "println") 1 $ Map.insert (Ident "print") 0 Map.empty
-
-initTEnv :: TEnv
-initTEnv = Map.insert (Ident "println") TPrint $ Map.insert (Ident "print") TPrint Map.empty
 
 initStore :: Store
 initStore = Map.insert 1 printlnFun $ Map.insert 0 printFun Map.empty
@@ -70,11 +59,11 @@ execProgram p = do
     _ -> exitFailure
 
 
-evalProg :: Program -> IM Value
+evalProg :: Program -> InterpreterMonad
 evalProg (PProgram pos inits) = do
   evalStmts $ [SInit pos init | init <- inits] ++ [SRet pos $ EApp pos (Ident "main") []]
 
-evalBlock :: Block -> IM Value
+evalBlock :: Block -> InterpreterMonad
 evalBlock (SBlock pos stmts) = evalStmts stmts
 
 
@@ -94,7 +83,7 @@ getDefaultForType (TFun _ targs t) = VFun t args block Map.empty
               ) targs [1..]
 getDefaultForType (TVoid _) = VVoid
 
-evalStmts :: [Stmt] -> IM Value
+evalStmts :: [Stmt] -> InterpreterMonad
 
 evalStmts (SEmpty pos : stmts) = evalStmts stmts
 
@@ -209,7 +198,7 @@ evalStmts (SPrintln pos e : stmts) = do
 
 evalStmts [] = pure VNothing
 
-evalExpr :: Expr -> IM Value
+evalExpr :: Expr -> InterpreterMonad
 evalExpr (EVar pos id) = do
   env <- ask
   let Just loc = Map.lookup id env
@@ -222,26 +211,23 @@ evalExpr (EApp pos id es) = do
   ns <- mapM evalExpr es
   let Just loc = Map.lookup id env
   store <- get
-  let Just value = Map.lookup loc store
-  case value of
-    (VFun t args f env') -> do
-      let (store', env'') = foldr (
-            \((e, n), arg) (store'', env''') -> case arg of
-              CopyArg _ t' arg_id ->
-                let loc' = newloc store'' in
-                (Map.insert loc' n store'', Map.insert arg_id loc' env''')
-              RefArg _ t' arg_id ->
-                let EVar _ var_id = e in
-                let maybeLoc' = Map.lookup var_id env in
-                case maybeLoc' of
-                  Just loc' -> (store'', Map.insert arg_id loc' env''')
-            ) (store, env') (zip (zip es ns) args)
-      modify $ const store'
-      v <- local (const env'') (evalBlock f)
-      case v of
-        VNothing -> pure $ getDefaultForType t
-        _ -> pure v
-    _ -> throwError $ "Internal error: expected function in store at " ++ showPos pos ++ ", got " ++ show value
+  let Just (VFun t args f env') = Map.lookup loc store
+  let (store', env'') = foldr (
+        \((e, n), arg) (store'', env''') -> case arg of
+          CopyArg _ t' arg_id ->
+            let loc' = newloc store'' in
+            (Map.insert loc' n store'', Map.insert arg_id loc' env''')
+          RefArg _ t' arg_id ->
+            let EVar _ var_id = e in
+            let maybeLoc' = Map.lookup var_id env in
+            case maybeLoc' of
+              Just loc' -> (store'', Map.insert arg_id loc' env''')
+        ) (store, env') (zip (zip es ns) args)
+  modify $ const store'
+  v <- local (const env'') (evalBlock f)
+  case v of
+    VNothing -> pure $ getDefaultForType t
+    _ -> pure v
 
 evalExpr (EAppLambda pos lambda es) = do
   f <- evalExpr lambda

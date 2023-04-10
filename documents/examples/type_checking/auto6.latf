@@ -13,7 +13,7 @@ int main() {
 
     auto my_curry = curry;
 
-    auto pow = lambda (int ref x, int y) -> auto {
+    auto pow = lambda (int x, int y) -> auto {
         auto i = 0;
         auto z = 1;
         while (i < y) {

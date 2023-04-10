@@ -11,17 +11,13 @@ import System.Exit
 import Control.Monad      ( when )
 
 import AbsLatteFun
-import LexLatteFun
-import ParLatteFun
-import PrintLatteFun
-import SkelLatteFun  ()
 import Control.Monad.Reader
 import Control.Monad.Except
 import Control.Monad.State
 import qualified Data.Map as Map
 import Data.Maybe
 
-type TM a = ExceptT String (ReaderT TEnv IO) a
+type TypeMonad = ExceptT String (ReaderT TEnv IO) Type
 
 showPos :: BNFC'Position -> String
 showPos (Just (line, col)) = "line " ++ show line ++ ", column " ++ show col
@@ -44,7 +40,7 @@ typeCheck p = do
       pure False
     Right _ -> pure True
 
-typeCheckProg :: Program -> TM Type
+typeCheckProg :: Program -> TypeMonad
 typeCheckProg (PProgram pos inits) = do
   typeCheckStmts [SInit (getInitPos init) init | init <- inits]
 
@@ -52,7 +48,7 @@ getInitPos :: Init -> BNFC'Position
 getInitPos (IVarDef pos _ _ _) = pos
 getInitPos (IFnDef pos _ _ _ _) = pos
 
-typeCheckBlock :: Block -> TM Type
+typeCheckBlock :: Block -> TypeMonad
 typeCheckBlock (SBlock pos stmts) = typeCheckStmts stmts
 
 
@@ -127,7 +123,7 @@ targToType (TCopyArg _ t) = t
 targToType (TRefArg _ t) = t
 
 
-typeCheckStmts :: [Stmt] -> TM Type
+typeCheckStmts :: [Stmt] -> TypeMonad
 typeCheckStmts (SEmpty pos : stmts) = typeCheckStmts stmts
 
 typeCheckStmts (SBStmt pos block : stmts) = do
@@ -273,7 +269,7 @@ typeCheckStmts [] = pure $ TAuto Nothing -- TODO?
 
 
 
-typeCheckExpr :: Expr -> TM Type
+typeCheckExpr :: Expr -> TypeMonad
 typeCheckExpr (EVar pos id) = do
   env <- ask
   let maybeType = Map.lookup id env
