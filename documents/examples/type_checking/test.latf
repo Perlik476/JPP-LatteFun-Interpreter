@@ -1,26 +1,44 @@
-[(int) -> int] f(bool b) {
-    if (b) {
-        return lambda (int x) -> int . x + 1;
-    }
-}
-
-auto g() {
-    return 1;
-    return false;
-}
-
-auto fib(int n) {
-    if (n < 2) {
-        return n;
-    }
-    else {
-        return fib(5);
-    }
-    return fib(1);
+auto curry([(int, int) -> int] ref f) {
+    return lambda (int x) -> auto {
+        return lambda (int y) -> auto {
+            return f(x, y);
+        };
+    };
 }
 
 int main() {
-    println((f(true))(0));
+    auto add = lambda (int x, int y) -> auto . x + y;
+    auto add2 = (curry(add))(2);
+    println(add2(3)); // 5
+
+    auto my_curry = curry;
+
+    auto pow = lambda (int x, int y) -> auto {
+        auto i = 0;
+        auto z = 1;
+        while (i < y) {
+            z = z * x;
+            i++;
+        }
+        return z;
+    };
+    auto pow2 = (my_curry(pow))(2);
+    println(pow2(3)); // 8
+
+    my_curry(lambda (int x, int y) -> auto . x + y);
+
+    add = pow; // OK
+    add2 = pow2; // OK
+    // add = pow2; // error - incompatible types
+
     
+    // my_curry = (lambda ([(int, int) -> int] f) -> auto {
+    //     return lambda (int x) -> auto {
+    //         return lambda (int ref y) -> auto {
+    //             return f(x, y);
+    //         };
+    //     };
+    // }); // error - incompatible types (int ref y instead of int y)
+
     return 0;
 }

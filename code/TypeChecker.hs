@@ -268,6 +268,28 @@ typeCheckStmts (SPrintln pos e : stmts) = typeCheckStmts (SPrint pos e : stmts)
 typeCheckStmts [] = pure $ TAuto Nothing -- TODO?
 
 
+checkArgumentTypes :: [Type] -> [Type] -> Maybe (Integer, Type, Type)
+checkArgumentTypes = checkArgumentTypes' 1
+
+checkArgumentTypes' :: Integer -> [Type] -> [Type] -> Maybe (Integer, Type, Type)
+checkArgumentTypes' n (t:ts) (t':ts') = 
+  if sameType t t' then checkArgumentTypes' (n + 1) ts ts'
+  else Just (n, t, t')
+checkArgumentTypes' _ _ _ = Nothing
+
+checkRefArguments :: [TArg] -> [Expr] -> Maybe Integer
+checkRefArguments = checkRefArguments' 1
+
+checkRefArguments' :: Integer -> [TArg] -> [Expr] -> Maybe Integer
+checkRefArguments' n (t:ts) (e:es) = 
+  case t of
+    TRefArg _ _ -> 
+      case e of
+        EVar _ _ -> checkRefArguments' (n + 1) ts es
+        _ -> Just n
+    _ -> checkRefArguments' (n + 1) ts es
+checkRefArguments' _ _ _ = Nothing
+
 
 typeCheckExpr :: Expr -> TypeMonad
 typeCheckExpr (EVar pos id) = do
@@ -285,22 +307,19 @@ typeCheckExpr (EApp pos id es) = do
     Nothing -> throwError $ "Function " ++ fromIdent id ++ " is not defined at " ++ showPos pos
     Just t@(TFun pos' t_args t') -> do
       if length t_args == length ts then
-        if foldr (\(t1, t2) res -> sameType t1 t2 && res) True (zip (map targToType t_args) ts) then
-            if foldr (
-              \(t_arg, e) res -> case t_arg of
-                TRefArg _ _ -> case e of
-                  EVar _ _ -> res
-                  _ -> False
-                _ -> res
-            ) True (zip t_args es) then
-              pure t'
-            else
-              throwError $ "Type mismatch at " ++ showPos pos ++ ": expected a ref argument"
-          else
-            throwError $ "Type mismatch at " ++ showPos pos ++ ": one of arguments is of incorrect type"
-        else
-          throwError ("Inorrect number of arguments to function " ++ fromIdent id ++ " of type " ++ showType t ++ " at " ++ showPos pos ++ ". "
-            ++ "Expected " ++ show (length t_args) ++ ", got " ++ show (length ts))
+        case checkArgumentTypes (map targToType t_args) ts of
+          Nothing ->
+            case checkRefArguments t_args es of
+              Nothing -> pure t'
+              Just n -> 
+                throwError ("Type mismatch at " ++ showPos pos ++ ": expected a variable as argument number " ++ show n 
+                  ++ " applied to the function " ++ fromIdent id ++ ", because it's a reference type")
+          Just (n, t1, t2) ->
+            throwError ("Type mismatch at " ++ showPos pos ++ ": argument number " ++ show n ++ " applied to the function "
+              ++ fromIdent id ++ " of type " ++ showType t ++ " is of type " ++ showType t2 ++ ", expected " ++ showType t1)
+      else
+        throwError ("Type mismatch at " ++ showPos pos ++ ": inorrect number of arguments to function " ++ fromIdent id ++ " of type " ++ showType t ++ ". "
+          ++ "Expected " ++ show (length t_args) ++ ", got " ++ show (length ts))
     Just TPrint -> do
       if length ts == 1 then do
         let t' = head ts
