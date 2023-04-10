@@ -1,4 +1,4 @@
-auto curry([(int, int) -> int] ref f) {
+auto curry([(int, int) -> int] f) {
     return lambda (int x) -> auto {
         return lambda (int y) -> auto {
             return f(x, y);
@@ -24,8 +24,6 @@ int main() {
     };
     auto pow2 = (my_curry(pow))(2);
     println(pow2(3)); // 8
-
-    my_curry(lambda (int x, int y) -> auto . x + y);
 
     add = pow; // OK
     add2 = pow2; // OK
