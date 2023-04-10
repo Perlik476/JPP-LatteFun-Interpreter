@@ -1,0 +1,235 @@
+bool can_reach(int start, int end, int number_of_nodes, [(int, int) -> bool] edges, [(int) -> bool] visited) {
+    [(int) -> bool] visit(int index, [(int) -> bool] visited) {
+        return lambda (int i) -> bool {
+            if (i == index) {
+                return true;
+            }
+            else {
+                return visited(i);
+            }
+        };
+    }
+
+    if (start == end) {
+        return true;
+    }
+
+    visited = visit(start, visited);
+
+    int node = 0;
+    while (node < number_of_nodes) {
+        if (!visited(node) && edges(start, node)) {
+            if (can_reach(node, end, number_of_nodes, edges, visited)) {
+                return true;
+            }
+        }
+        node++;
+    }
+
+    return false;
+}
+
+
+[(int) -> bool] get_empty_visited() {
+    return lambda (int i) -> bool . false;
+}
+
+
+int distance(int start, int end, int number_of_nodes, [(int, int) -> bool] edges) {
+    void visit(int index, [(int) -> bool] ref visited) {
+        [(int) -> bool] visited_temp = visited;
+        visited = lambda (int i) -> bool {
+            if (i == index) {
+                return true;
+            }
+            else {
+                return visited_temp(i);
+            }
+        };
+    }
+
+    [(int) -> int] get_empty_queue() {
+        return lambda (int i) -> int . -1;
+    }
+
+    bool is_empty([(int) -> int] ref queue) {
+        return queue(0) == -1;
+    }
+
+    int pop([(int) -> int] ref queue) {
+        int result = queue(0);
+        [(int) -> int] queue_temp = queue;
+        queue = lambda (int i) -> int . queue_temp(i + 1);
+        return result;
+    }
+
+    void push(int value, [(int) -> int] ref queue) {
+        int i = 0;
+        while (queue(i) != -1) {
+            i++;
+        }
+        [(int) -> int] queue_temp = queue;
+        queue = lambda (int j) -> int {
+            if (j == i) {
+                return value;
+            }
+            else {
+                return queue_temp(j);
+            }
+        };
+    }
+    
+    [(int) -> bool] visited = get_empty_visited();
+    [(int) -> int] node_queue = get_empty_queue();
+    [(int) -> int] dist_queue = get_empty_queue();
+
+    push(start, node_queue);
+    push(0, dist_queue);
+
+    int dist = 0;
+    while (!is_empty(node_queue)) {
+        int node = pop(node_queue);
+        int dist = pop(dist_queue);
+
+        visit(node, visited);
+        if (node == end) {
+            return dist;
+        }
+        dist++;
+
+        int neighbour = 0;
+        while (neighbour < number_of_nodes) {
+            if (!visited(neighbour) && edges(node, neighbour)) {
+                push(neighbour, node_queue);
+                push(dist, dist_queue);
+            }
+            neighbour++;
+        }
+    }
+
+    return -1;
+}
+
+[(int, int) -> bool] get_sample_edges() {
+    return lambda (int i, int j) -> bool {
+        if (i == 0) {
+            return j == 1 || j == 2;
+        }
+        if (i == 1) {
+            return j == 2 || j == 3 || j == 5;
+        }
+        if (i == 2) {
+            return j == 3 || j == 4;
+        }
+        if (i == 3) {
+            return j == 4;
+        }
+        if (i == 4) {
+            return j == 1;
+        }
+        if (i == 6) {
+            return j == 7;
+        }
+        if (i == 7) {
+            return j == 8;
+        }
+        if (i == 8) {
+            return j == 9;
+        }
+        return false;
+    };
+}
+
+int get_sample_number_of_nodes() {
+    return 10;
+}
+
+
+void test_can_reach(int start, int end, bool expected) {
+    bool actual = can_reach(start, end, get_sample_number_of_nodes(), get_sample_edges(), get_empty_visited());
+    if (actual == expected) {
+        print("OK: ");
+    }
+    else {
+        print("FAIL!!!: ");
+    }
+
+    print("can_reach("); print(start); print(", "); print(end); print(") = "); print(actual);
+    print(" (expected "); print(expected); println(")");
+}
+
+
+void check_can_reach() {
+    println("can_reach test:");
+
+    test_can_reach(0, 0, true);
+    test_can_reach(0, 1, true);
+    test_can_reach(0, 2, true);
+    test_can_reach(0, 4, true);
+    test_can_reach(4, 0, false);
+    test_can_reach(3, 1, true);
+    test_can_reach(6, 9, true);
+    test_can_reach(0, 9, false);
+
+    println("");
+}
+
+
+void test_distance(int start, int end, int expected) {
+    int actual = distance(start, end, get_sample_number_of_nodes(), get_sample_edges());
+    if (actual == expected) {
+        print("OK: ");
+    }
+    else {
+        print("FAIL!!!: ");
+    }
+
+    print("distance("); print(start); print(", "); print(end); print(") = "); print(actual);
+    print(" (expected "); print(expected); println(")");
+}
+
+void check_distance() {
+    println("distance test:");
+
+    test_distance(0, 0, 0);
+    test_distance(0, 1, 1);
+    test_distance(0, 2, 1);
+    test_distance(0, 4, 2);
+    test_distance(4, 0, -1);
+    test_distance(3, 1, 2);
+    test_distance(6, 9, 3);
+    test_distance(0, 9, -1);
+
+    println("");
+}
+
+void print_graph(int number_of_nodes, [(int, int) -> bool] edges) {
+    int i = 0;
+    while (i < number_of_nodes) {
+        int j = 0;
+        while (j < number_of_nodes) {
+            if (edges(i, j)) {
+                print(i); print(" -> "); print(j); println("");
+            }
+            j++;
+        }
+        i++;
+    }
+    println("");
+}
+
+void print_sample_graph() {
+    println("Sample graph:");
+    print_graph(get_sample_number_of_nodes(), get_sample_edges());
+}
+
+
+int main() {
+    print_sample_graph();
+
+    check_can_reach();
+
+    check_distance();
+
+    return 0;
+}

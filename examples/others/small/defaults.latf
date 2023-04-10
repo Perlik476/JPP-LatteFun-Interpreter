@@ -1,0 +1,18 @@
+int main() {
+    int x;
+    println(x); // 0
+
+    [(string, bool) -> int] f;
+    println(f("abc", true)); // 0
+
+    [() -> bool] g;
+    println(g()); // false
+
+    [(string) -> string] h;
+    println(h("abc")); // [empty line]
+
+    [(string) -> [(bool) -> int]] fun;
+    println((fun("def"))(true)); // 0
+
+    return 0;
+}

@@ -1,0 +1,20 @@
+void plus_one(int ref x) {
+    x++;
+}
+
+void plus_x(int x, [(int) -> int] ref g) {
+    g = lambda (int y) -> int . y + x;
+}
+
+int main() {
+    int x = 1;
+    plus_one(x);
+    println(x); // 2
+
+    [(int) -> int] g = lambda (int y) -> int . y * y;
+    println(g(42)); // 1764
+    plus_x(2, g);
+    println(g(42)); // 44
+
+    return 0;
+}

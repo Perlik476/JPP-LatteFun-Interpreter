@@ -1,0 +1,71 @@
+auto f() {
+    return 1;
+    return false; // OK - it's staticaly known that this line is unreachable
+}
+
+/*
+auto g() {
+    if (true) {
+        return 1;
+    }
+    else {
+        return false; // error - different return types
+    }
+}
+*/
+
+/*
+auto h() {
+    if (true) {
+        return 1;
+    }
+    else {}
+    // error - it's possible that the function with auto return type returns nothing
+}
+*/
+
+auto i() {
+    if (true) {
+        return 1;
+    }
+    else {}
+    return 0; // OK
+}
+
+/*
+auto j() {
+    while (true) {
+        return 1;
+    }
+    // error - it's possible that the function with auto return type returns nothing
+    // (not really, but we don't check the while/if conditions statically)
+}
+*/
+
+auto k() {
+    while (true) {
+        return 1;
+    }
+    return 0; // OK
+}
+
+auto k() {
+    while (true) {}
+    return 0; // OK
+}
+
+auto l() {
+    if (true) {
+        return 1;
+    }
+    else {
+        return 2;
+    }
+    // OK - it's staticaly known that this line is unreachable due to the return statements in both branches
+}
+
+int main() {
+    println(f()); // 1
+
+    return 0;
+}

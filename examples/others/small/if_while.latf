@@ -1,0 +1,26 @@
+int fib(int n) {
+    int a = 0;
+    int b = 1;
+    int i = 0;
+    
+    while (i < n) {
+        int c = a + b;
+        a = b;
+        b = c;
+        i++;
+    }
+    return a;
+}
+
+int main() {
+    int x = fib(10);
+
+    if (x > 50) {
+        println("x is greater than 50"); // <-
+    }
+    else {
+        println("x is less than or equal to 50");
+    }
+
+    return 0;
+}

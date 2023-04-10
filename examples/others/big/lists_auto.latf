@@ -1,0 +1,231 @@
+int head([(int) -> int] list) {
+    return list(0);
+}
+
+auto tail([(int) -> int] list) {
+    return lambda (int n) -> int . list(n + 1);
+}
+
+int length([(int) -> int] list) {
+    int i = 0;
+    while (true) {
+        if (list(i) == 0) {
+            return i;
+        }
+        i++;
+    }
+}
+
+auto zeros() {
+    return lambda (int n) -> int . 0;
+}
+
+auto add(int x, [(int) -> int] list) {
+    return lambda (int n) -> int {
+        if (n == 0) {
+            return x;
+        }
+        else { 
+            return list(n - 1);
+        }
+    };
+}
+
+auto concat([(int) -> int] list1, [(int) -> int] list2) {
+    return lambda (int n) -> int {
+        if (n < length(list1)) {
+            return list1(n);
+        }
+        else {
+            return list2(n - length(list1));
+        }
+    };
+}
+
+void printList([(int) -> int] list) {
+    print("[");
+    int i = 0;
+    while (true) {
+        if (list(i) == 0) {
+            print("]");
+            return;
+        }
+        if (i != 0) {
+            print(", ");
+        }
+        print(list(i));
+        i++;
+    }
+}
+
+void printlnList([(int) -> int] list) {
+    printList(list);
+    println("");
+}
+
+auto reverse([(int) -> int] list) {
+    [(int) -> int] reversed;
+    reversed = zeros();
+    int i = 0;
+    while (list(i) != 0) {
+        reversed = add(list(i), reversed);
+        i++;
+    }
+    return reversed;
+}
+
+auto map([(int) -> int] f, [(int) -> int] list) {
+    return lambda (int n) -> int {
+        if (list(n) == 0) {
+            return 0;
+        }
+        else {
+            return f(list(n));
+        }
+    };
+}
+
+
+auto filter([(int) -> bool] f, [(int) -> int] list) {
+    return lambda (int n) -> int {
+        if (list(n) == 0) {
+            return 0;
+        }
+        else {
+            [(int) -> int] lst = list;
+            while (true) {
+                int hd = head(lst);
+                if (hd == 0) {
+                    return 0;
+                }
+                if (f(hd)) {
+                    if (n == 0) {
+                        return hd;
+                    }
+                    n--;
+                }
+                lst = tail(lst);
+            }
+        }
+    };
+}
+
+int foldl([(int, int) -> int] f, int x, [(int) -> int] list) {
+    if (head(list) == 0) {
+        return x;
+    }
+    else {
+        return foldl(f, f(x, head(list)), tail(list));
+    }
+}
+
+auto take(int n, [(int) -> int] list) {
+    return lambda (int i) -> int {
+        if (i < n) {
+            return list(i);
+        }
+        else {
+            return 0;
+        }
+    };
+}
+
+auto drop(int n, [(int) -> int] list) {
+    return lambda (int i) -> int . list(i + n);
+}
+
+auto zipWith([(int, int) -> int] f, [(int) -> int] list1, [(int) -> int] list2) {
+    return lambda (int n) -> int {
+        if (list1(n) == 0 || list2(n) == 0) {
+            return 0;
+        }
+        else {
+            return f(list1(n), list2(n));
+        }
+    };
+}
+
+[(int) -> int] iterate([(int) -> int] f, int x) {
+    return lambda (int n) -> int {
+        if (n == 0) {
+            return x;
+        }
+        else {
+            return (iterate(f, f(x)))(n - 1);
+        }
+    };
+}
+
+int identity(int x) {
+    return x;
+}
+
+auto repeat(int x) {
+    return iterate(lambda (int x) -> int . x, x);
+}
+
+auto cycle([(int) -> int] list) {
+    return lambda (int n) -> int {
+        return list(n % length(list));
+    };
+}
+
+auto replicate(int n, int x) {
+    return take(n, repeat(x));
+}
+
+int fib(int n) {
+    int a = 0;
+    int b = 1;
+    int i = 0;
+    while (i < n) {
+        int c = a + b;
+        a = b;
+        b = c;
+        i++;
+    }
+    return a;
+}
+
+auto nats = iterate(lambda (int n) -> int . n + 1, 1);
+
+auto fibs = map(fib, nats);
+
+auto evens = filter(lambda (int x) -> bool . x % 2 == 0, nats);
+
+auto primes = 
+    filter(
+        lambda (int x) -> bool . 
+            length(
+                filter(
+                    lambda (int y) -> bool . x % y == 0,
+                    take(x, nats)
+                )
+            ) == 2,
+        nats
+    );
+
+int main() {
+    print("fibs: ");
+    printlnList(take(10, fibs));
+
+    print("evens: ");
+    printlnList(take(10, evens));
+
+    print("nats squared: ");
+    printlnList(take(10, map(lambda (int x) -> int . x * x, nats)));
+
+    auto sum = lambda (int x, int y) -> int . x + y;
+
+    auto list = zipWith(sum, fibs, nats);
+    print("fibs + nats: ");
+    printlnList(take(10, list));
+
+    print("sum of the first 10 nats: ");
+    println(foldl(sum, 0, take(10, nats)));
+
+    print("primes: ");
+    printlnList(take(10, primes));
+
+    return 0;
+}

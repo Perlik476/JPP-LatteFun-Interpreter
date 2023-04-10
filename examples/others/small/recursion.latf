@@ -1,0 +1,28 @@
+int sum_first_nats(int n) {
+    if (n == 0) {
+        return 0;
+    }
+
+    return n + sum_first_nats(n - 1);
+}
+
+
+int fib(int n) {
+    bool check(int n) {
+        return n < 2;
+    }
+
+    if (check(n)) {
+        return n;
+    }
+
+    return fib(n - 1) + fib(n - 2);
+}
+
+int main() {
+    println(sum_first_nats(20)); // 210
+
+    println(fib(10)); // 55
+
+    return 0;
+}
