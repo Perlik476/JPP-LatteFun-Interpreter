@@ -1,0 +1,11 @@
+auto j() {
+    while (true) {
+        return 1;
+    }
+    // error - it's possible that the function with auto return type returns nothing
+    // (not really, but we don't check the while/if conditions statically)
+}
+
+int main() {
+    return 0;
+}

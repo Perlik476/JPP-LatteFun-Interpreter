@@ -1,0 +1,6 @@
+int main() {
+    [(int) -> int] f = lambda (int x) -> int . x;
+    f = lambda (int x) -> void { return; }; // error
+
+    return 0;
+}

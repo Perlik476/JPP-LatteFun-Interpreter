@@ -1,0 +1,16 @@
+auto g() {
+    return 1;
+}
+
+auto h() {
+    return lambda (int x, int y) -> auto . x + y;
+}
+
+int main() {
+    auto x = g(); // OK
+    println(x); // 1
+    x = h(); // error
+
+    return 0;
+}
+

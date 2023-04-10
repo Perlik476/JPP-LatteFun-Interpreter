@@ -3,6 +3,5 @@ int main() {
     g(1);
     g = println; // OK
     g(2);
-    // g = lambda (int x) -> int . x + 1; // error - incompatible types
     return 0;
 }

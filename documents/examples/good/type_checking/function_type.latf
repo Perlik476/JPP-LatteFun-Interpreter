@@ -1,0 +1,12 @@
+int g(int x) {
+    return x + 1;
+}
+
+int main() {
+    [(int) -> int] f = lambda (int x) -> int . x;
+    f = g; // OK
+
+    f = lambda (int x) -> int . 2 * x; // OK
+
+    return 0;
+}

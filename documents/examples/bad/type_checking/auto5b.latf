@@ -1,0 +1,11 @@
+auto h() {
+    if (true) {
+        return 1;
+    }
+    else {}
+    // error - it's possible that the function with auto return type returns nothing
+}
+
+int main() {
+    return 0;
+}

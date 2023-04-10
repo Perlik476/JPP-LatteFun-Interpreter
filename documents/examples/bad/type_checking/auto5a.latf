@@ -1,0 +1,12 @@
+auto g() {
+    if (true) {
+        return 1;
+    }
+    else {
+        return false; // error - different return types
+    }
+}
+
+int main() {
+    return 0;
+}

@@ -1,4 +1,0 @@
-int main() {
-    int x = 0 / 0; // Runtime exception
-    return 0;
-}

@@ -12,10 +12,8 @@ auto h() {
 }
 
 int main() {
-    // auto x = f(); // error
     auto x = g(); // OK
     println(x); // 1
-    // x = h(); // error
     auto x = h(); // OK
     println(x(1, 2)); // 3
 

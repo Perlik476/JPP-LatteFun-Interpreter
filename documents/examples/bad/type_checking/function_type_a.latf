@@ -1,0 +1,10 @@
+int g(int ref x) {
+    return x + 1;
+}
+
+int main() {
+    [(int) -> int] f = lambda (int x) -> int . x;
+    f = g; // error
+
+    return 0;
+}
