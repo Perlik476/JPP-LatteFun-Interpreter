@@ -1,0 +1,10 @@
+auto f() {
+    println("Hello, world!");
+    return; // needed to know that the return type is void
+}
+
+int main() {
+    auto x = f(); // error
+
+    return 0;
+}

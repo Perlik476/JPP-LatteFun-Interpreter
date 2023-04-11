@@ -1,8 +1,3 @@
-auto f() {
-    println("Hello, world!");
-    return; // needed to know that the return type is void
-}
-
 auto g() {
     return 1;
 }
@@ -14,8 +9,8 @@ auto h() {
 int main() {
     auto x = g(); // OK
     println(x); // 1
-    auto x = h(); // OK
-    println(x(1, 2)); // 3
+    x = h(); // error
 
     return 0;
 }
+

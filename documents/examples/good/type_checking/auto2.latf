@@ -1,0 +1,7 @@
+int main() {
+    auto g = print; // OK
+    g(1);
+    g = println; // OK
+    g(2);
+    return 0;
+}

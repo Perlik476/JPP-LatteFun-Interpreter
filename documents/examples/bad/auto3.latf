@@ -1,6 +1,0 @@
-int main() {
-    auto g = print; // OK
-    g(1);
-    g = lambda (int x) -> int . x + 1; // error - incompatible types
-    return 0;
-}

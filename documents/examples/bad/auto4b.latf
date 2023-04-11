@@ -1,16 +1,11 @@
-auto g() {
-    return 1;
-}
-
 auto h() {
-    return lambda (int x, int y) -> auto . x + y;
+    if (true) {
+        return 1;
+    }
+    else {}
+    // error - it's possible that the function with auto return type returns nothing
 }
 
 int main() {
-    auto x = g(); // OK
-    println(x); // 1
-    x = h(); // error
-
     return 0;
 }
-
