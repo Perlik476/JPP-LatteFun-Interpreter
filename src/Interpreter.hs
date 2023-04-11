@@ -14,6 +14,7 @@ import Control.Monad.Except
 import Control.Monad.State
 import qualified Data.Map as Map
 import Data.Maybe
+import qualified Data.Char
 
 
 maybeHead :: [a] -> Maybe a
@@ -184,7 +185,7 @@ evalStmts (SPrint pos e : stmts) = do
   v <- evalExpr e
   liftIO $ putStr $ case v of
      VInt n -> show n
-     VBool b -> show b
+     VBool b -> map Data.Char.toLower $ show b
      VString s -> s
   evalStmts stmts
 
@@ -192,7 +193,7 @@ evalStmts (SPrintln pos e : stmts) = do
   v <- evalExpr e
   liftIO $ putStr $ case v of
      VInt n -> show n ++ "\n"
-     VBool b -> show b ++ "\n"
+     VBool b -> map Data.Char.toLower $ show b ++ "\n"
      VString s -> s ++ "\n"
   evalStmts stmts
 

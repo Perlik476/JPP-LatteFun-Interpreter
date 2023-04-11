@@ -8,5 +8,7 @@ int main() {
 
     f = lambda (int x) -> int . 2 * x; // OK
 
+    [(int) -> void] f = lambda (int x) -> void { return; }; // OK
+
     return 0;
 }
