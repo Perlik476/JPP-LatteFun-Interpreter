@@ -149,7 +149,7 @@ errorDeclarationFailure :: BNFC'Position -> String -> String
 errorDeclarationFailure pos message = "Declaration failure at " ++ showPos pos ++ ".\n" ++ message ++ "."
 
 errorDeclarationFailureVariable :: BNFC'Position -> Ident -> String -> String
-errorDeclarationFailureVariable pos var message = errorDeclarationFailure pos (".\nVariable " ++ fromIdent var ++ " " ++ message)
+errorDeclarationFailureVariable pos var message = errorDeclarationFailure pos ("Variable " ++ fromIdent var ++ " " ++ message)
 
 errorAssignmentFailureVoid :: BNFC'Position -> Ident -> String
 errorAssignmentFailureVoid pos var = "Assignment failure at " ++ showPos pos ++ ".\nCannot assign void expression to variable " ++ fromIdent var ++ "."

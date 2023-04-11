@@ -1,0 +1,5 @@
+int main() {
+    int x = x; // error - unknown identifier
+
+    return 0;
+}

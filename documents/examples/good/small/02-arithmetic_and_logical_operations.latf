@@ -5,12 +5,16 @@ int main() {
     println(5 / 2); // 2
     println(5 % 2); // 1
 
+    println("");
+
     println(5 == 2); // false
     println(5 != 2); // true
     println(5 < 2); // false
     println(5 <= 2); // false
     println(5 > 2); // true
     println(5 >= 2); // true
+
+    println("");
 
     println(true && false); // false
     println(true || false); // true
