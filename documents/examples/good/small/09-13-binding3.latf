@@ -1,0 +1,33 @@
+void fun() {
+    println("fun"); 
+}
+
+int main() {
+    if (true) {
+        int fun = 42;
+        println(fun); // 42
+        // fun(); // error - not a function
+        bool b = true;
+        int cnt = 0;
+        while (cnt != 2) {
+            cnt++;
+            if (b) { // <- first branch
+                println(fun); // 42
+                fun = 7; // OK
+                // fun(); // error - not a function
+            }
+            else { // <- second branch
+                println(fun); // 7
+                bool fun;
+                println(fun); // false
+                // println(fun + fun); // error - incompatible types
+                // fun(); // error - not a function
+            }
+            println(fun + fun); // 14
+            b = !b;
+        }
+    }
+    fun(); // fun
+
+    return 0;
+}

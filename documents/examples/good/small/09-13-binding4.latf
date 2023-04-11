@@ -1,0 +1,22 @@
+void fun() {
+    println("fun"); 
+}
+
+int main() {
+    if (true) {
+        if (false) {
+
+        }
+        else {
+            void fun() {
+                println("changed fun"); 
+            }
+
+            fun(); // changed fun
+        }
+
+        fun(); // fun
+    }
+
+    return 0;
+}

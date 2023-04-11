@@ -1,0 +1,17 @@
+void fun() {
+    println("fun"); 
+}
+
+int main() {
+    if (true) {
+        if (false) {
+            bool fun = true;
+        }
+        else {
+            int fun = 42;
+        }
+        println(fun); // error - not a basic type
+    }
+
+    return 0;
+}

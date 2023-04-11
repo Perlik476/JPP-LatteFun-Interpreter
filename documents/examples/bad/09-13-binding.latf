@@ -1,0 +1,12 @@
+void fun() {
+    println("fun"); 
+}
+
+int main() {
+    if (true) {
+        int fun = 42;
+        fun(); // error - not a function
+    }
+
+    return 0;
+}
