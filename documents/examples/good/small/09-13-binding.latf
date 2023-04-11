@@ -13,9 +13,14 @@ void fun(int x) {
     println(y); // 256
 }
 
+void fun2() {
+    println("fun2"); 
+}
+
 int main() {
     println(x); // 128
     fun(42);
+    println("");
 
     int x = (lambda (int x) -> int . x + 1)(20);
     println(x); // 21
@@ -37,6 +42,26 @@ int main() {
         x = 11;
     })();
     println(x); // 11
+
+    println("");
+
+    if (true) {
+        int fun2 = 42;
+        println(fun2); // 42
+        // fun2(); // error - not a function
+        if (false) {
+
+        }
+        else {
+            bool fun2;
+            println(fun2); // false
+            // println(fun2 + fun2); // error - incompatible types
+            // fun2(); // error - not a function
+        }
+        println(fun2 + fun2); // 84
+    }
+
+    fun2();
 
     return 0;
 }
