@@ -8,15 +8,15 @@ int main() {
 
         }
         else {
-            void fun() {
-                println("changed fun");
-            }
+            fun = lambda () -> void { println("changed fun"); };
 
             fun(); // changed fun
         }
 
-        fun(); // fun
+        fun(); // changed fun
     }
+
+    fun(); // changed fun
 
     return 0;
 }
