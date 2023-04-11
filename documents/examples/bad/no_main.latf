@@ -1,3 +1,4 @@
 int not_main() {
     return 0;
 }
+// error
