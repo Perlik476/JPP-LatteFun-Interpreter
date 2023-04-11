@@ -1,3 +1,30 @@
+int fun() {
+    if (true) {
+        if (false) {
+
+        }
+        else {
+            return 1;
+        }
+    }
+}
+
+int fun2() {
+    while (true) {
+        if (false) {
+
+        }
+        else {
+            while (false) {
+
+            }
+            while (true) {
+                return 2;
+            }
+        }
+    }
+}
+
 int main() {
     int n = 10;
     int a = 0;
@@ -24,6 +51,12 @@ int main() {
     else {
         println("x is less than or equal to 50");
     }
+
+    x = fun();
+    println(x); // 1;
+
+    x = fun2();
+    println(x); // 2;
 
     return 0;
 }
