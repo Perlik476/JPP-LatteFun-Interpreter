@@ -3,7 +3,7 @@ auto h() {
         return 1;
     }
     else {}
-    // error - it's possible that the function with auto return type returns nothing
+    // error - it's possible (without knowing the bool condition values) that the function with auto return type returns nothing
 }
 
 int main() {

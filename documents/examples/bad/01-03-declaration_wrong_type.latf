@@ -1,0 +1,4 @@
+int main() {
+    int x = true; // error - wrong type
+    return 0;
+}

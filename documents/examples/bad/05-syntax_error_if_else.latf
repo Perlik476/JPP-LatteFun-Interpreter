@@ -1,0 +1,13 @@
+int main() {
+    if (x > 0) {
+        println("x is positive")
+    }
+    else if (x < 0) { // <- error - missing parentheses after else: should be else { if (...) { ... } else { ... }}}
+        println("x is negative")
+    }
+    else {
+        println("x is zero")
+    }
+
+    return 0;
+}
