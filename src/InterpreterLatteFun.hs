@@ -58,9 +58,8 @@ usage = do
   putStrLn $ unlines
     [ "usage: Call with one of the following argument combinations:"
     , "  --help          Display this help message."
-    , "  (no arguments)  Parse stdin verbosely."
-    , "  (files)         Parse content of files verbosely."
-    , "  -s (files)      Silent mode. Parse content of files silently."
+    , "  (no arguments)  Interpret concent of stdin."
+    , "  (file)          Interpret content of a file."
     ]
 
 main :: IO ()
@@ -69,5 +68,5 @@ main = do
   case args of
     ["--help"] -> usage
     []         -> getContents >>= run 2 pProgram
-    "-s":fs    -> mapM_ (runFile 0 pProgram) fs
-    fs         -> mapM_ (runFile 2 pProgram) fs
+    [f]        -> runFile 2 pProgram f
+    _          -> usage
