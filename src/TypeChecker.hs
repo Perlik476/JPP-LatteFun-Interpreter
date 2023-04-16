@@ -185,6 +185,9 @@ isTAuto :: Type -> Bool
 isTAuto (TAuto _) = True
 isTAuto _ = False
 
+containsTAuto :: Type -> Bool
+containsTAuto t = isTFunWithTAuto t || isTAuto t
+
 fromArgToTArg :: Arg -> TArg
 fromArgToTArg (CopyArg pos t _) = TCopyArg pos t
 fromArgToTArg (RefArg pos t _) = TRefArg pos t
@@ -196,6 +199,68 @@ fromArgToId (RefArg _ _ id) = id
 fromTArgToType :: TArg -> Type
 fromTArgToType (TCopyArg _ t) = t
 fromTArgToType (TRefArg _ t) = t
+
+
+checkArgumentTypes :: BNFC'Position -> Ident -> Type -> [Type] -> TypeMonad
+checkArgumentTypes pos id t_fun@(TFun _ t_args _) ts = 
+  checkArgumentTypes' 1 (map fromTArgToType t_args) ts
+  where
+    checkArgumentTypes' :: Int -> [Type] -> [Type] -> TypeMonad
+    checkArgumentTypes' n (t:ts) (t':ts') =
+      if sameType t t' then checkArgumentTypes' (n + 1) ts ts'
+      else throwError $ FunctionWrongArgumentType pos id t_fun n t t'
+    checkArgumentTypes' _ _ _ = pure $ TAuto Nothing
+checkArgumentTypes pos id t _ = throwError $ NotAFunction pos id t
+
+checkRefArguments :: BNFC'Position -> Ident -> Type -> [Expr] -> TypeMonad
+checkRefArguments pos id t_fun@(TFun _ t_args _) es = 
+  checkRefArguments' 1 t_args es
+  where
+    checkRefArguments' :: Int -> [TArg] -> [Expr] -> TypeMonad
+    checkRefArguments' n (t:ts) (e:es) =
+      case t of
+        TRefArg _ _ ->
+          case e of
+            EVar _ _ -> checkRefArguments' (n + 1) ts es
+            _ -> throwError $ FunctionRefArgument pos id t_fun n
+        _ -> checkRefArguments' (n + 1) ts es
+    checkRefArguments' _ _ _ = pure $ TAuto Nothing
+checkRefArguments pos id t _ = throwError $ NotAFunction pos id t
+
+
+checkVoidArguments :: [Arg] -> TypeMonad 
+checkVoidArguments args = checkVoidArguments' 1 t_args
+  where
+    t_args = map (fromTArgToType . fromArgToTArg) args
+    id_args = map fromArgToId args
+    checkVoidArguments' :: Int -> [Type] -> TypeMonad
+    checkVoidArguments' n (t:ts) =
+      case t of
+        TVoid pos -> throwError $ DeclarationFailure pos (id_args!!n) t
+        _ -> checkVoidArguments' (n + 1) ts
+    checkVoidArguments' _ _ = pure $ TAuto Nothing
+
+checkAutoArguments :: [Arg] -> TypeMonad
+checkAutoArguments args = checkAutoArguments' 1 t_args
+  where 
+    t_args = map (fromTArgToType . fromArgToTArg) args
+    id_args = map fromArgToId args
+    checkAutoArguments' :: Int -> [Type] -> TypeMonad
+    checkAutoArguments' n (t:ts) =
+      if containsTAuto t then throwError $ DeclarationFailure (hasPosition t) (id_args!!n) t
+      else checkAutoArguments' (n + 1) ts
+    checkAutoArguments' _ _ = pure $ TAuto Nothing
+
+
+createFunctionEnv :: [Arg] -> TEnv -> TEnv
+createFunctionEnv args env = 
+  foldr (
+    \(id', t') env'' -> Map.insert id' t' env''
+  ) env $ zip id_args t_args
+  where
+    t_args = map (fromTArgToType . fromArgToTArg) args
+    id_args = map fromArgToId args
+
 
 typeCheckStmts :: [Stmt] -> TypeMonad
 typeCheckStmts (SEmpty pos : stmts) = typeCheckStmts stmts
@@ -224,24 +289,22 @@ typeCheckStmts (SInit pos (IVarDef pos' t id e) : stmts) = do
 
 typeCheckStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do
   env <- ask
-  let t_args = map (fromTArgToType . fromArgToTArg) args
-      id_args = map fromArgToId args
-  checkVoidArguments args t_args
-  checkAutoArguments args t_args
-  let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ (id, t_fun):zip id_args t_args
-      t_fun = TFun pos' (map fromArgToTArg args) t
+  checkVoidArguments args
+  checkAutoArguments args
+  let env' = Map.insert id t_fun $ createFunctionEnv args env
+      t_fun = TFun pos' (map fromArgToTArg args) t''
+      t'' = if isTFunWithTAuto t then TAuto pos else t
   t' <- local (const env') (typeCheckBlock block)
+
   if (sameType t t' && not (isTAuto t')) || (isTAuto t' && not (isTAuto t)) then do
-    let t_real = if not (isTAuto t) then t else t'
+    let t_real = if not (isTAuto t'') then t'' else t'
         t_fun' = TFun pos' (map fromArgToTArg args) t_real
         env'' = Map.insert id t_fun' env'
     local (const env'') (typeCheckStmts stmts)
+  else if isTAuto t && isTAuto t' then
+    throwError $ TypeDeductionFailure pos
   else
-    throwError $
-      if isTAuto t && isTAuto t' then
-        TypeDeductionFailure pos
-      else
-        TypeMismatch pos t t'
+    throwError $ TypeMismatch pos t t'
 
 typeCheckStmts (SAss pos id e : stmts) = do
   t_e <- typeCheckExpr e
@@ -335,52 +398,6 @@ typeCheckStmts (SPrintln pos e : stmts) = typeCheckStmts (SPrint pos e : stmts)
 
 typeCheckStmts [] = pure $ TAuto Nothing
 
-
-checkArgumentTypes :: BNFC'Position -> Ident -> Type -> [Type] -> TypeMonad
-checkArgumentTypes pos id t_fun@(TFun _ t_args _) ts = 
-  checkArgumentTypes' 1 (map fromTArgToType t_args) ts
-  where
-    checkArgumentTypes' :: Int -> [Type] -> [Type] -> TypeMonad
-    checkArgumentTypes' n (t:ts) (t':ts') =
-      if sameType t t' then checkArgumentTypes' (n + 1) ts ts'
-      else throwError $ FunctionWrongArgumentType pos id t_fun n t t'
-    checkArgumentTypes' _ _ _ = pure $ TAuto Nothing
-checkArgumentTypes pos id t _ = throwError $ NotAFunction pos id t
-
-checkRefArguments :: BNFC'Position -> Ident -> Type -> [Expr] -> TypeMonad
-checkRefArguments pos id t_fun@(TFun _ t_args _) es = 
-  checkRefArguments' 1 t_args es
-  where
-    checkRefArguments' :: Int -> [TArg] -> [Expr] -> TypeMonad
-    checkRefArguments' n (t:ts) (e:es) =
-      case t of
-        TRefArg _ _ ->
-          case e of
-            EVar _ _ -> checkRefArguments' (n + 1) ts es
-            _ -> throwError $ FunctionRefArgument pos id t_fun n
-        _ -> checkRefArguments' (n + 1) ts es
-    checkRefArguments' _ _ _ = pure $ TAuto Nothing
-checkRefArguments pos id t _ = throwError $ NotAFunction pos id t
-
--- TODO Arg contains Type
-checkVoidArguments :: [Arg] -> [Type] -> TypeMonad 
-checkVoidArguments args ts = checkVoidArguments' 1 ts
-  where
-    checkVoidArguments' :: Int -> [Type] -> TypeMonad
-    checkVoidArguments' n (t:ts) =
-      case t of
-        TVoid pos -> throwError $ DeclarationFailure pos (map fromArgToId args!!n) t
-        _ -> checkVoidArguments' (n + 1) ts
-    checkVoidArguments' _ _ = pure $ TAuto Nothing
-
-checkAutoArguments :: [Arg] -> [Type] -> TypeMonad
-checkAutoArguments args = checkAutoArguments' 1
-  where 
-  checkAutoArguments' :: Int -> [Type] -> TypeMonad
-  checkAutoArguments' n (t:ts) =
-    if isTAuto t || isTFunWithTAuto t then throwError $ DeclarationFailure (hasPosition t) (map fromArgToId args!!n) t
-    else checkAutoArguments' (n + 1) ts
-  checkAutoArguments' _ _ = pure $ TAuto Nothing
 
 
 typeCheckExpr :: Expr -> TypeMonad
@@ -485,25 +502,19 @@ typeCheckExpr (EOr pos e e') = typeCheckExpr (EAnd pos e e')
 
 typeCheckExpr (ELambdaBlock pos args t block) = do
   env <- ask
-  let t_args = map (fromTArgToType . fromArgToTArg) args
-      id_args = map fromArgToId args
-  checkVoidArguments args t_args
-  checkAutoArguments args t_args
+  checkVoidArguments args
+  checkAutoArguments args
   let t'' = if isTFunWithTAuto t then TAuto pos else t
-  let env' = foldr (\(id', t') env'' -> Map.insert id' t' env'') env $ zip id_args t_args
-      t_fun = TFun pos (map fromArgToTArg args) t''
-  t' <- local (const env') (typeCheckBlock block)
+  t' <- local (createFunctionEnv args) (typeCheckBlock block)
 
   if (sameType t t' && not (isTAuto t')) || (isTAuto t' && not (isTAuto t)) then do
     let t_real = if not (isTAuto t'') then t else t'
         t_fun' = TFun pos (map fromArgToTArg args) t_real
     pure t_fun'
+  else if isTAuto t && isTAuto t' then
+    throwError $ TypeDeductionFailure pos
   else
-    throwError $
-      if isTAuto t && isTAuto t' then
-        TypeDeductionFailure pos
-      else
-        TypeMismatch pos t t'
+    throwError $ TypeMismatch pos t t'
 
 typeCheckExpr (ELambdaExpr pos args t e) = typeCheckExpr (ELambdaBlock pos args t (SBlock pos [SRet pos e]))
 
