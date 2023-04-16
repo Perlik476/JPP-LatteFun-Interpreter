@@ -30,10 +30,8 @@ type Verbosity  = Int
 putStrV :: Verbosity -> String -> IO ()
 putStrV v s = when (v > 1) $ putStrLn s
 
--- runFile :: (Print a, Show a) => Verbosity -> ParseFun a -> FilePath -> IO ()
-runFile v p f = putStrLn f >> readFile f >>= run v p
+runFile v p f = readFile f >>= run v p
 
--- run :: (Print a, Show a) => Verbosity -> ParseFun a -> String -> IO ()
 run v p s =
   case p ts of
     Left err -> do
