@@ -1,0 +1,8 @@
+int g(int ref x) {
+    return x + 1;
+}
+
+int main() {
+    g(1); // error
+    return 0;
+}

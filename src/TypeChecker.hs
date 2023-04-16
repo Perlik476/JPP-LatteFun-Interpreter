@@ -52,13 +52,13 @@ instance Show Error where
         concat ["Type deduction failure at ", showPos pos, ".\n", "Encountered values of different types returned in function definition: ",
           showTypes ts, "."]
       FunctionWrongNumberOfArguments pos id t_fun n n' ->
-        concat ["Function application failure at ", showPos pos, "in function ", fromIdent id, " of type ", showType t_fun, ".\n",
+        concat ["Function application failure at ", showPos pos, " in function ", fromIdent id, " of type ", showType t_fun, ".\n",
           "Incorrect number of arguments. Expected ", show n, ", got ", show n', "."]
       FunctionWrongArgumentType pos id t_fun n t t' ->
-        concat ["Function application failure (type mismatch) at ", showPos pos, "in function ", fromIdent id, " of type ", showType t_fun,
+        concat ["Function application failure (type mismatch) at ", showPos pos, " in function ", fromIdent id, " of type ", showType t_fun,
           ".\n", "Expected ", showType t, " as argument number ", show n, ", got ", showType t', "."]
       FunctionRefArgument pos id t_fun n ->
-        concat ["Function application failure at (reference type) at", showPos pos, "in function ", fromIdent id, " of type ", showType t_fun,
+        concat ["Function application failure at (reference type) at ", showPos pos, " in function ", fromIdent id, " of type ", showType t_fun,
           ".\n", "Expected a variable as argument number ", show n, ", got an expression."]
       NotAFunction pos id t ->
         concat ["Function application failure (type mismatch) at ", showPos pos, ".\n", "Variable ", fromIdent id, " of type ", showType t,
