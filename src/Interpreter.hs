@@ -54,7 +54,6 @@ execProgram p = do
     Right (VInt n) -> "Program finished with exit code " ++ show n ++ "\n"
     Left error -> "Runtime exception: " ++ error ++ "\n"
     Right v -> "Error: incorrect return value " ++ show v ++ "\n"
-  -- putStr $ "Store size at exit: " ++ show (length store) ++ "\n"
   case val of
     Right (VInt n) -> exitWith $ if n == 0 then ExitSuccess else ExitFailure $ fromIntegral n
     _ -> exitFailure
@@ -233,7 +232,7 @@ evalExpr (EApp pos id es) = do
 evalExpr (EAppLambda pos lambda es) = do
   f <- evalExpr lambda
   store <- get
-  let loc = newloc store -- TODO nie trzeba przecież tego robić
+  let loc = newloc store
   modify $ Map.insert loc f
   local (Map.insert (Ident "λ") loc) $ evalExpr (EApp pos (Ident "λ") es)
 

@@ -86,7 +86,7 @@ data Expr' a
     | EVal a Value
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
 
-data Value = VInt Integer | VString String | VBool Bool | VFun Type [Arg] Block Env | VVoid | VNothing --VFun Type [Arg] Block Env State
+data Value = VInt Integer | VString String | VBool Bool | VFun Type [Arg] Block Env | VVoid | VNothing
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 type Var = Ident

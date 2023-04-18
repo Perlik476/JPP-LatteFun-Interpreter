@@ -332,7 +332,13 @@ typeCheckStmts (SIncr pos id : stmts) = do
 
 typeCheckStmts (SDecr pos id : stmts) = typeCheckStmts (SIncr pos id : stmts)
 
-typeCheckStmts (SRet pos e : stmts) = typeCheckExpr e
+typeCheckStmts (SRet pos e : stmts) = do -- TODO
+  t <- typeCheckExpr e
+  t' <- typeCheckStmts stmts
+  if sameType t t' && not (isTAuto t') then
+    pure t
+  else
+    throwError $ ReturnTypeMismatch pos [t, t']
 
 typeCheckStmts (SVRet pos : stmts) = pure $ TVoid pos
 

@@ -1,0 +1,10 @@
+auto f() {
+    return 1;
+    if (true) {
+        return true;
+    }
+}
+
+int main() {
+    f();
+}
