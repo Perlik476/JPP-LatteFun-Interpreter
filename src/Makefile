@@ -35,7 +35,7 @@ InterpreterLatteFun : AbsLatteFun.hs LexLatteFun.hs ParLatteFun.hs PrintLatteFun
 # Rules for cleaning generated files.
 
 clean :
-	-rm -f *.hi *.o *.log *.aux *.dvi
+	-rm -f *.hi *.o *.log *.aux *.dvi *.x *.y *.info *.txt
 
 distclean : clean
 	-rm -f AbsLatteFun.hs AbsLatteFun.hs.bak ComposOp.hs ComposOp.hs.bak DocLatteFun.txt DocLatteFun.txt.bak ErrM.hs ErrM.hs.bak LayoutLatteFun.hs LayoutLatteFun.hs.bak LexLatteFun.x LexLatteFun.x.bak ParLatteFun.y ParLatteFun.y.bak PrintLatteFun.hs PrintLatteFun.hs.bak SkelLatteFun.hs SkelLatteFun.hs.bak TestLatteFun.hs TestLatteFun.hs.bak XMLLatteFun.hs XMLLatteFun.hs.bak ASTLatteFun.agda ASTLatteFun.agda.bak ParserLatteFun.agda ParserLatteFun.agda.bak IOLib.agda IOLib.agda.bak Main.agda Main.agda.bak LatteFun.dtd LatteFun.dtd.bak TestLatteFun LexLatteFun.hs ParLatteFun.hs ParLatteFun.info ParDataLatteFun.hs Makefile

@@ -16,7 +16,13 @@ import qualified Data.Map as Map
 import Data.Maybe
 import Data.List (intercalate)
 
-type TypeMonad = ExceptT Error (ReaderT TEnv IO) Type
+type TypeMonad = ExceptT Error (ReaderT TEnv IO) TypeDeduced
+type TypeMonad' = ExceptT Error (ReaderT TEnv IO) Type
+
+data TypeDeduced
+  = TMaybe Type
+  | TDefinitive Type
+  | TNothing
 
 type Error = Error' BNFC'Position
 data Error' a
@@ -105,7 +111,7 @@ initsContainMain ((IFnDef pos t id args block) : inits) = do
       if any (\ini -> fromIdent (getInitId ini) == "main") inits then
         throwError $ MainError Nothing "Multiple definitions of main in the toplevel."
       else
-        pure t
+        pure $ TDefinitive t
 initsContainMain [] = throwError $ MainError Nothing "Function main is not defined."
 
 
@@ -206,7 +212,7 @@ checkArgumentTypes pos id t_fun@(TFun _ t_args _) ts =
     checkArgumentTypes' n (t:ts) (t':ts') =
       if sameType t t' then checkArgumentTypes' (n + 1) ts ts'
       else throwError $ FunctionWrongArgumentType pos id t_fun n t t'
-    checkArgumentTypes' _ _ _ = pure $ TAuto Nothing
+    checkArgumentTypes' _ _ _ = pure $ TNothing
 checkArgumentTypes pos id t _ = throwError $ NotAFunction pos id t
 
 checkRefArguments :: BNFC'Position -> Ident -> Type -> [Expr] -> TypeMonad
@@ -221,7 +227,7 @@ checkRefArguments pos id t_fun@(TFun _ t_args _) es =
             EVar _ _ -> checkRefArguments' (n + 1) ts es
             _ -> throwError $ FunctionRefArgument pos id t_fun n
         _ -> checkRefArguments' (n + 1) ts es
-    checkRefArguments' _ _ _ = pure $ TAuto Nothing
+    checkRefArguments' _ _ _ = pure $ TNothing
 checkRefArguments pos id t _ = throwError $ NotAFunction pos id t
 
 
@@ -235,7 +241,7 @@ checkVoidArguments args = checkVoidArguments' 1 t_args
       case t of
         TVoid pos -> throwError $ DeclarationFailure pos (id_args!!n) t
         _ -> checkVoidArguments' (n + 1) ts
-    checkVoidArguments' _ _ = pure $ TAuto Nothing
+    checkVoidArguments' _ _ = pure $ TNothing
 
 checkAutoArguments :: [Arg] -> TypeMonad
 checkAutoArguments args = checkAutoArguments' 1 t_args
@@ -246,7 +252,13 @@ checkAutoArguments args = checkAutoArguments' 1 t_args
     checkAutoArguments' n (t:ts) =
       if containsTAuto t then throwError $ DeclarationFailure (hasPosition t) (id_args!!n) t
       else checkAutoArguments' (n + 1) ts
-    checkAutoArguments' _ _ = pure $ TAuto Nothing
+    checkAutoArguments' _ _ = pure $ TNothing
+
+
+getType :: TypeDeduced -> TypeMonad'
+getType (TDefinitive t) = pure t
+getType (TMaybe t) = throwError $ TypeDeductionFailure $ hasPosition t
+getType TNothing = throwError $ TypeDeductionFailure Nothing
 
 
 createFunctionEnv :: [Arg] -> TEnv -> TEnv
@@ -291,7 +303,7 @@ typeCheckStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do
   let env' = Map.insert id t_fun $ createFunctionEnv args env
       t_fun = TFun pos' (map fromArgToTArg args) t''
       t'' = if isTFunWithTAuto t then TAuto pos else t
-  t' <- local (const env') (typeCheckBlock block)
+  t' <- getType =<< local (const env') (typeCheckBlock block)
 
   if (sameType t t' && not (isTAuto t')) || (isTAuto t' && not (isTAuto t)) then do
     let t_real = if not (isTAuto t'') then t'' else t'
@@ -330,27 +342,18 @@ typeCheckStmts (SIncr pos id : stmts) = do
 typeCheckStmts (SDecr pos id : stmts) = typeCheckStmts (SIncr pos id : stmts)
 
 typeCheckStmts (SRet pos e : stmts) = do -- TODO
-  t <- typeCheckExpr e
-  t' <- typeCheckStmts stmts
-  if sameType t t' then
-    pure t
-  else
-    throwError $ ReturnTypeMismatch pos [t, t']
+  t1 <- typeCheckExpr e
+  t2 <- typeCheckStmts stmts
+  pure (TDefinitive t1)
+  -- if sameType t1 t2 then
+  --   pure t1
+  -- else
+  --   throwError $ ReturnTypeMismatch pos [t1, t2]
 
-typeCheckStmts (SVRet pos : stmts) = pure $ TVoid pos
+typeCheckStmts (SVRet pos : stmts) = pure $ TDefinitive $ TVoid pos
 
-typeCheckStmts (SCond pos e block : stmts) = do
-  t <- typeCheckExpr e
-  case t of
-    TBool _ -> do
-      t1 <- typeCheckBlock block
-      t2 <- typeCheckStmts stmts
-      if sameType t1 t2 then
-        pure t2
-      else
-        throwError $ ReturnTypeMismatch pos [t1, t2]
-    _ -> do
-      throwError $ TypeMismatch pos (TBool Nothing) t
+typeCheckStmts (SCond pos e block : stmts) = 
+  typeCheckStmts (SCondElse pos e block (SBlock pos []) : stmts)
 
 typeCheckStmts (SCondElse pos e block block': stmts) = do
   t <- typeCheckExpr e
@@ -359,11 +362,13 @@ typeCheckStmts (SCondElse pos e block block': stmts) = do
       t1 <- typeCheckBlock block
       t2 <- typeCheckBlock block'
       t3 <- typeCheckStmts stmts
-      if sameType t1 t2 && sameType t2 t3 then
-        if not (isTAuto t1) && not (isTAuto t2) then pure t1
-        else pure t3
-      else
-        throwError $ ReturnTypeMismatch pos [t1, t2, t3]
+      -- TODO
+      pure t3
+      -- if sameType t1 t2 && sameType t2 t3 then
+      --   if not (isTAuto t1) && not (isTAuto t2) then pure t1
+      --   else pure t3
+      -- else
+      --   throwError $ ReturnTypeMismatch pos [t1, t2, t3]
     _ -> do
       throwError $ TypeMismatch pos (TBool Nothing) t
 
@@ -373,16 +378,14 @@ typeCheckStmts (SWhile pos e block : stmts) = do
     TBool _ -> do
       t1 <- typeCheckBlock block
       t2 <- typeCheckStmts stmts
-      if sameType t1 t2 then
-        pure t2
-      else
-        throwError $ ReturnTypeMismatch pos [t1, t2]
+      -- TODO
+      pure t2
+      -- if sameType t1 t2 then
+      --   pure t2
+      -- else
+      --   throwError $ ReturnTypeMismatch pos [t1, t2]
     _ -> do
       throwError $ TypeMismatch pos (TBool Nothing) t
-
-typeCheckStmts (SExp pos e : []) = do
-  typeCheckExpr e
-  pure (TAuto pos)
 
 typeCheckStmts (SExp pos e : stmts) = do
   typeCheckExpr e
@@ -396,11 +399,11 @@ typeCheckStmts (SPrint pos e : stmts) = do
     TStr _ -> typeCheckStmts stmts
     _ -> throwError $ TypeMismatchOptions pos [TInt Nothing, TBool Nothing, TStr Nothing] t
 
-typeCheckStmts [] = pure $ TAuto Nothing
+typeCheckStmts [] = pure TNothing
 
 
 
-typeCheckExpr :: Expr -> TypeMonad
+typeCheckExpr :: Expr -> TypeMonad'
 typeCheckExpr (EVar pos id) = do
   env <- ask
   let maybeType = Map.lookup id env
@@ -505,7 +508,7 @@ typeCheckExpr (ELambdaBlock pos args t block) = do
   checkVoidArguments args
   checkAutoArguments args
   let t'' = if isTFunWithTAuto t then TAuto pos else t
-  t' <- local (createFunctionEnv args) (typeCheckBlock block)
+  t' <- getType =<< local (createFunctionEnv args) (typeCheckBlock block)
 
   if (sameType t t' && not (isTAuto t')) || (isTAuto t' && not (isTAuto t)) then do
     let t_real = if not (isTAuto t'') then t else t'
