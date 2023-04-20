@@ -10,14 +10,13 @@
 
 module AbsLatteFun where
 
-import Prelude (Integer, String, Bool)
+import Prelude (Integer, String)
 import qualified Prelude as C
   ( Eq, Ord, Show, Read
   , Functor, Foldable, Traversable
   , Int, Maybe(..)
   )
 import qualified Data.String
-import qualified Data.Map as Map
 
 type Program = Program' BNFC'Position
 data Program' a = PProgram a [Init' a]
@@ -53,12 +52,17 @@ data Stmt' a
     | SWhile a (Expr' a) (Block' a)
     | SExp a (Expr' a)
     | SPrint a (Expr' a)
-    | SPrintln a (Expr' a)
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
 
 type Type = Type' BNFC'Position
 data Type' a
-    = TInt a | TStr a | TBool a | TVoid a | TFun a [TArg' a] (Type' a) | TAuto a | TPrint
+    = TInt a
+    | TStr a
+    | TBool a
+    | TVoid a
+    | TFun a [TArg' a] (Type' a)
+    | TAuto a
+    | TPrint a
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
 
 type TArg = TArg' BNFC'Position
@@ -83,17 +87,7 @@ data Expr' a
     | EOr a (Expr' a) (Expr' a)
     | ELambdaExpr a [Arg' a] (Type' a) (Expr' a)
     | ELambdaBlock a [Arg' a] (Type' a) (Block' a)
-    | EVal a Value
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
-
-data Value = VInt Integer | VString String | VBool Bool | VFun Type [Arg] Block Env | VVoid | VNothing
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-type Var = Ident
-type Env = Map.Map Var Loc
-type Store = Map.Map Loc Value
-type Loc = Integer
-type TEnv = Map.Map Var Type
 
 type AddOp = AddOp' BNFC'Position
 data AddOp' a = OPlus a | OMinus a
@@ -159,7 +153,6 @@ instance HasPosition Stmt where
     SWhile p _ _ -> p
     SExp p _ -> p
     SPrint p _ -> p
-    SPrintln p _ -> p
 
 instance HasPosition Type where
   hasPosition = \case
@@ -169,7 +162,7 @@ instance HasPosition Type where
     TVoid p -> p
     TFun p _ _ -> p
     TAuto p -> p
-    TPrint -> C.Nothing
+    TPrint p -> p
 
 instance HasPosition TArg where
   hasPosition = \case
@@ -194,7 +187,6 @@ instance HasPosition Expr where
     EOr p _ _ -> p
     ELambdaExpr p _ _ _ -> p
     ELambdaBlock p _ _ _ -> p
-    EVal p _ -> p
 
 instance HasPosition AddOp where
   hasPosition = \case

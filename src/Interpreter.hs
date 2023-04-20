@@ -45,7 +45,7 @@ initStore = Map.insert 1 printlnFun $ Map.insert 0 printFun Map.empty
     printlnFun = VFun (TVoid Nothing) [CopyArg Nothing (TInt Nothing) (Ident "x")] printlnBlock Map.empty
 
     printlnBlock :: Block
-    printlnBlock = SBlock Nothing [SPrintln Nothing (EVar Nothing (Ident "x"))]
+    printlnBlock = SBlock Nothing [SPrint Nothing (EVar Nothing (Ident "x")), SPrint Nothing (EString Nothing "\n")]
 
 execProgram :: Program -> IO ()
 execProgram p = do
@@ -74,7 +74,7 @@ getDefaultForType (TBool _) = VBool False
 getDefaultForType (TFun _ targs t) = VFun t args block Map.empty
   where
     block :: Block
-    block = SBlock Nothing [SRet Nothing $ EVal Nothing $ getDefaultForType t]
+    block = SBlock Nothing [SRet Nothing $ valueToExpr $ getDefaultForType t]
 
     args :: [Arg]
     args = zipWith (\ targ n -> case targ of
@@ -82,6 +82,13 @@ getDefaultForType (TFun _ targs t) = VFun t args block Map.empty
                   TRefArg p t' -> RefArg p t' (Ident $ show n)
               ) targs [1..]
 getDefaultForType (TVoid _) = VVoid
+
+valueToExpr :: Value -> Expr
+valueToExpr (VInt n) = ELitInt Nothing n
+valueToExpr (VString s) = EString Nothing s
+valueToExpr (VBool False) = ELitFalse Nothing
+valueToExpr (VBool True) = ELitTrue Nothing
+valueToExpr (VFun t args block env) = ELambdaBlock Nothing args t block
 
 evalStmts :: [Stmt] -> InterpreterMonad
 
@@ -186,14 +193,6 @@ evalStmts (SPrint pos e : stmts) = do
      VInt n -> show n
      VBool b -> map Data.Char.toLower $ show b
      VString s -> s
-  evalStmts stmts
-
-evalStmts (SPrintln pos e : stmts) = do
-  v <- evalExpr e
-  liftIO $ putStr $ case v of
-     VInt n -> show n ++ "\n"
-     VBool b -> map Data.Char.toLower $ show b ++ "\n"
-     VString s -> s ++ "\n"
   evalStmts stmts
 
 evalStmts [] = pure VNothing
@@ -323,5 +322,3 @@ evalExpr (ELambdaExpr pos args t e) = do
       block = SBlock pos [SRet pos e]
       f = VFun t args block env
   pure f
-
-evalExpr (EVal pos value) = pure value

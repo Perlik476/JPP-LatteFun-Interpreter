@@ -187,6 +187,7 @@ instance Print (AbsLatteFun.Stmt' a) where
     AbsLatteFun.SCondElse _ expr block1 block2 -> prPrec i 0 (concatD [doc (showString "if"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 block1, doc (showString "else"), prt 0 block2])
     AbsLatteFun.SWhile _ expr block -> prPrec i 0 (concatD [doc (showString "while"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 block])
     AbsLatteFun.SExp _ expr -> prPrec i 0 (concatD [prt 0 expr, doc (showString ";")])
+    AbsLatteFun.SPrint _ expr -> prPrec i 0 (concatD [prt 0 expr])
 
 instance Print (AbsLatteFun.Type' a) where
   prt i = \case
@@ -196,6 +197,7 @@ instance Print (AbsLatteFun.Type' a) where
     AbsLatteFun.TVoid _ -> prPrec i 0 (concatD [doc (showString "void")])
     AbsLatteFun.TFun _ targs type_ -> prPrec i 0 (concatD [doc (showString "["), doc (showString "("), prt 0 targs, doc (showString ")"), doc (showString "->"), prt 0 type_, doc (showString "]")])
     AbsLatteFun.TAuto _ -> prPrec i 0 (concatD [doc (showString "auto")])
+    AbsLatteFun.TPrint _ -> prPrec i 0 (concatD [])
 
 instance Print (AbsLatteFun.TArg' a) where
   prt i = \case

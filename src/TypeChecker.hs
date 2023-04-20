@@ -6,6 +6,7 @@ import Prelude
 import System.Environment ( getArgs )
 import System.Exit
 import Control.Monad      ( when )
+import Utils
 
 import AbsLatteFun
 import Control.Monad.Reader
@@ -65,17 +66,13 @@ instance Show Error where
           " is not a function."]
       MainError pos message -> 
         concat ["Function main error at ", showPos pos, ".\n", message]
-        
 
-showPos :: BNFC'Position -> String
-showPos (Just (line, col)) = "line " ++ show line ++ ", column " ++ show col
-showPos Nothing = "unknown location"
 
 fromIdent :: Ident -> String
 fromIdent (Ident s) = s
 
 initTEnv :: TEnv
-initTEnv = Map.insert (Ident "println") TPrint $ Map.insert (Ident "print") TPrint Map.empty
+initTEnv = Map.insert (Ident "println") (TPrint Nothing) $ Map.insert (Ident "print") (TPrint Nothing) Map.empty
 
 
 typeCheck :: Program -> IO Bool
@@ -139,7 +136,7 @@ showType' (TStr _) = "string"
 showType' (TVoid _) = "void"
 showType' (TAuto _) = "auto"
 showType' (TFun _ args t) = "[(" ++ showArgs args ++ ") -> " ++ showType' t ++ "]"
-showType' TPrint = "[(int | bool | string) -> void] (print)"
+showType' (TPrint _) = "[(int | bool | string) -> void] (print)"
 
 showTypes :: [Type] -> String
 showTypes = intercalate ", " . map showType
@@ -164,7 +161,7 @@ sameType (TFun _ t_args t_ret) (TFun _ t_args' t_ret') = sameType t_ret t_ret'
   && foldr (\(t, t') res -> res && sameTypeArg t t') True (zip t_args t_args')
 sameType (TAuto _) _ = True
 sameType _ (TAuto _) = True
-sameType TPrint TPrint = True
+sameType (TPrint _) (TPrint _) = True
 sameType _ _ = False
 
 sameTypeArg :: TArg -> TArg -> Bool
@@ -335,7 +332,7 @@ typeCheckStmts (SDecr pos id : stmts) = typeCheckStmts (SIncr pos id : stmts)
 typeCheckStmts (SRet pos e : stmts) = do -- TODO
   t <- typeCheckExpr e
   t' <- typeCheckStmts stmts
-  if sameType t t' && not (isTAuto t') then
+  if sameType t t' then
     pure t
   else
     throwError $ ReturnTypeMismatch pos [t, t']
@@ -399,9 +396,6 @@ typeCheckStmts (SPrint pos e : stmts) = do
     TStr _ -> typeCheckStmts stmts
     _ -> throwError $ TypeMismatchOptions pos [TInt Nothing, TBool Nothing, TStr Nothing] t
 
-
-typeCheckStmts (SPrintln pos e : stmts) = typeCheckStmts (SPrint pos e : stmts)
-
 typeCheckStmts [] = pure $ TAuto Nothing
 
 
@@ -427,7 +421,7 @@ typeCheckExpr (EApp pos id es) = do
         pure t'
       else
         throwError $ FunctionWrongNumberOfArguments pos id t (length t_args) (length ts)
-    Just TPrint -> do
+    Just (TPrint _) -> do
       if length ts == 1 then do
         let t' = head ts
         case t' of
@@ -436,7 +430,7 @@ typeCheckExpr (EApp pos id es) = do
           TStr _ -> pure $ TVoid pos
           _ -> throwError $ TypeMismatchOptions pos [TBool Nothing, TInt Nothing, TStr Nothing] t'
       else
-        throwError $ FunctionWrongNumberOfArguments pos id TPrint 1 (length ts)
+        throwError $ FunctionWrongNumberOfArguments pos id (TPrint Nothing) 1 (length ts)
     Just t -> throwError $ NotAFunction pos id t
 
 typeCheckExpr (EAppLambda pos lambda es) = do
@@ -523,5 +517,3 @@ typeCheckExpr (ELambdaBlock pos args t block) = do
     throwError $ TypeMismatch pos t t'
 
 typeCheckExpr (ELambdaExpr pos args t e) = typeCheckExpr (ELambdaBlock pos args t (SBlock pos [SRet pos e]))
-
-typeCheckExpr (EVal pos _) = pure $ TAuto pos

@@ -46,7 +46,9 @@ SCondElse.  Stmt ::= "if" "(" Expr ")" Block "else" Block  ;
 
 SWhile.     Stmt ::= "while" "(" Expr ")" Block ;
 
-SExp.      Stmt ::= Expr  ";" ;
+SExp.       Stmt ::= Expr  ";" ;
+
+internal SPrint. Stmt ::= Expr ;
 
 -- Types ---------------------------------------------------
 
@@ -61,6 +63,8 @@ TVoid.      Type ::= "void" ;
 TFun.       Type ::= "[" "(" [TArg] ")" "->" Type "]" ;
 
 TAuto.      Type ::= "auto" ;
+
+internal TPrint. Type ::= "";
 
 TCopyArg. 	TArg ::= Type;
 

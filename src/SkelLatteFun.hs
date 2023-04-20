@@ -52,6 +52,7 @@ transStmt x = case x of
   AbsLatteFun.SCondElse _ expr block1 block2 -> failure x
   AbsLatteFun.SWhile _ expr block -> failure x
   AbsLatteFun.SExp _ expr -> failure x
+  AbsLatteFun.SPrint _ expr -> failure x
 
 transType :: Show a => AbsLatteFun.Type' a -> Result
 transType x = case x of
@@ -61,6 +62,7 @@ transType x = case x of
   AbsLatteFun.TVoid _ -> failure x
   AbsLatteFun.TFun _ targs type_ -> failure x
   AbsLatteFun.TAuto _ -> failure x
+  AbsLatteFun.TPrint _ -> failure x
 
 transTArg :: Show a => AbsLatteFun.TArg' a -> Result
 transTArg x = case x of

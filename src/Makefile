@@ -19,7 +19,16 @@ all : InterpreterLatteFun
 
 # Rules for building the parser.
 
-InterpreterLatteFun : AbsLatteFun.hs LexLatteFun.hs ParLatteFun.hs PrintLatteFun.hs Interpreter.hs TypeChecker.hs InterpreterLatteFun.hs
+AbsLatteFun.hs LexLatteFun.x ParLatteFun.y PrintLatteFun.hs TestLatteFun.hs : LatteFun.cf
+	bnfc --haskell --functor LatteFun.cf
+
+%.hs : %.y
+	${HAPPY} ${HAPPY_OPTS} $<
+
+%.hs : %.x
+	${ALEX} ${ALEX_OPTS} $<
+
+InterpreterLatteFun : AbsLatteFun.hs LexLatteFun.hs ParLatteFun.hs PrintLatteFun.hs Utils.hs Interpreter.hs TypeChecker.hs InterpreterLatteFun.hs
 	${GHC} ${GHC_OPTS} $@
 	cp InterpreterLatteFun ../interpreter
 
