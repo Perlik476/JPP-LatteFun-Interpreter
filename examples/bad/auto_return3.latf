@@ -1,4 +1,4 @@
-auto j() {
+auto f() {
     while (true) {
         return 1;
     }

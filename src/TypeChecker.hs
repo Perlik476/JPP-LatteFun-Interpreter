@@ -20,9 +20,9 @@ type TypeMonad = ExceptT Error (ReaderT TEnv IO) TypeDeduced
 type TypeMonad' = ExceptT Error (ReaderT TEnv IO) Type
 
 data TypeDeduced
-  = TMaybe Type
-  | TDefinitive Type
-  | TNothing
+  = TDMaybe Type
+  | TDDefinitive Type
+  | TDNothing
 
 type Error = Error' BNFC'Position
 data Error' a
@@ -111,7 +111,7 @@ initsContainMain ((IFnDef pos t id args block) : inits) = do
       if any (\ini -> fromIdent (getInitId ini) == "main") inits then
         throwError $ MainError Nothing "Multiple definitions of main in the toplevel."
       else
-        pure $ TDefinitive t
+        pure $ TDDefinitive t
 initsContainMain [] = throwError $ MainError Nothing "Function main is not defined."
 
 
@@ -212,7 +212,7 @@ checkArgumentTypes pos id t_fun@(TFun _ t_args _) ts =
     checkArgumentTypes' n (t:ts) (t':ts') =
       if sameType t t' then checkArgumentTypes' (n + 1) ts ts'
       else throwError $ FunctionWrongArgumentType pos id t_fun n t t'
-    checkArgumentTypes' _ _ _ = pure $ TNothing
+    checkArgumentTypes' _ _ _ = pure TDNothing
 checkArgumentTypes pos id t _ = throwError $ NotAFunction pos id t
 
 checkRefArguments :: BNFC'Position -> Ident -> Type -> [Expr] -> TypeMonad
@@ -227,7 +227,7 @@ checkRefArguments pos id t_fun@(TFun _ t_args _) es =
             EVar _ _ -> checkRefArguments' (n + 1) ts es
             _ -> throwError $ FunctionRefArgument pos id t_fun n
         _ -> checkRefArguments' (n + 1) ts es
-    checkRefArguments' _ _ _ = pure $ TNothing
+    checkRefArguments' _ _ _ = pure TDNothing
 checkRefArguments pos id t _ = throwError $ NotAFunction pos id t
 
 
@@ -241,7 +241,7 @@ checkVoidArguments args = checkVoidArguments' 1 t_args
       case t of
         TVoid pos -> throwError $ DeclarationFailure pos (id_args!!n) t
         _ -> checkVoidArguments' (n + 1) ts
-    checkVoidArguments' _ _ = pure $ TNothing
+    checkVoidArguments' _ _ = pure TDNothing
 
 checkAutoArguments :: [Arg] -> TypeMonad
 checkAutoArguments args = checkAutoArguments' 1 t_args
@@ -252,13 +252,32 @@ checkAutoArguments args = checkAutoArguments' 1 t_args
     checkAutoArguments' n (t:ts) =
       if containsTAuto t then throwError $ DeclarationFailure (hasPosition t) (id_args!!n) t
       else checkAutoArguments' (n + 1) ts
-    checkAutoArguments' _ _ = pure $ TNothing
+    checkAutoArguments' _ _ = pure TDNothing
 
 
-getType :: TypeDeduced -> TypeMonad'
-getType (TDefinitive t) = pure t
-getType (TMaybe t) = throwError $ TypeDeductionFailure $ hasPosition t
-getType TNothing = throwError $ TypeDeductionFailure Nothing
+getType :: BNFC'Position -> Type -> TypeDeduced -> TypeMonad'
+getType pos t (TDDefinitive t') = pure t'
+getType pos t (TDMaybe t') = if isTAuto t then throwError $ TypeDeductionFailure pos else pure t
+getType pos t TDNothing = if isTAuto t then throwError $ TypeDeductionFailure pos else pure t
+
+deduceType :: BNFC'Position -> [TypeDeduced] -> TypeMonad
+deduceType pos = deduceType' TDNothing
+  where
+    deduceType' :: TypeDeduced -> [TypeDeduced] -> TypeMonad
+    deduceType' td [] = pure td
+    deduceType' td (td':tds') = do
+      case td of
+        TDNothing -> case td' of
+          TDDefinitive t' -> deduceType' (TDMaybe t') tds'
+          _ -> deduceType' td' tds'
+        TDMaybe t -> case td' of
+          TDNothing -> deduceType' td tds'
+          TDMaybe t' -> if sameType t t' then deduceType' td tds' else throwError $ TypeMismatch pos t t'
+          TDDefinitive t' -> if sameType t t' then deduceType' td tds' else throwError $ TypeMismatch pos t t'
+        TDDefinitive t -> case td' of
+          TDNothing -> deduceType' td tds'
+          TDMaybe t' -> if sameType t t' then deduceType' td' tds' else throwError $ TypeMismatch pos t t'
+          TDDefinitive t' -> if sameType t t' then deduceType' td tds' else throwError $ TypeMismatch pos t t'
 
 
 createFunctionEnv :: [Arg] -> TEnv -> TEnv
@@ -303,7 +322,7 @@ typeCheckStmts (SInit pos (IFnDef pos' t id args block) : stmts) = do
   let env' = Map.insert id t_fun $ createFunctionEnv args env
       t_fun = TFun pos' (map fromArgToTArg args) t''
       t'' = if isTFunWithTAuto t then TAuto pos else t
-  t' <- getType =<< local (const env') (typeCheckBlock block)
+  t' <- getType pos t =<< local (const env') (typeCheckBlock block)
 
   if (sameType t t' && not (isTAuto t')) || (isTAuto t' && not (isTAuto t)) then do
     let t_real = if not (isTAuto t'') then t'' else t'
@@ -342,15 +361,12 @@ typeCheckStmts (SIncr pos id : stmts) = do
 typeCheckStmts (SDecr pos id : stmts) = typeCheckStmts (SIncr pos id : stmts)
 
 typeCheckStmts (SRet pos e : stmts) = do -- TODO
-  t1 <- typeCheckExpr e
-  t2 <- typeCheckStmts stmts
-  pure (TDefinitive t1)
-  -- if sameType t1 t2 then
-  --   pure t1
-  -- else
-  --   throwError $ ReturnTypeMismatch pos [t1, t2]
+  t <- typeCheckExpr e
+  td <- typeCheckStmts stmts
+  deduceType pos [TDDefinitive t, td]
+  pure $ TDDefinitive t
 
-typeCheckStmts (SVRet pos : stmts) = pure $ TDefinitive $ TVoid pos
+typeCheckStmts (SVRet pos : stmts) = pure $ TDDefinitive $ TVoid pos
 
 typeCheckStmts (SCond pos e block : stmts) = 
   typeCheckStmts (SCondElse pos e block (SBlock pos []) : stmts)
@@ -359,16 +375,17 @@ typeCheckStmts (SCondElse pos e block block': stmts) = do
   t <- typeCheckExpr e
   case t of
     TBool _ -> do
-      t1 <- typeCheckBlock block
-      t2 <- typeCheckBlock block'
-      t3 <- typeCheckStmts stmts
+      td1 <- typeCheckBlock block
+      td2 <- typeCheckBlock block'
+      td3 <- typeCheckStmts stmts
       -- TODO
-      pure t3
-      -- if sameType t1 t2 && sameType t2 t3 then
-      --   if not (isTAuto t1) && not (isTAuto t2) then pure t1
-      --   else pure t3
-      -- else
-      --   throwError $ ReturnTypeMismatch pos [t1, t2, t3]
+      td_cond <- deduceType pos [td1, td2]
+      td <- deduceType pos [td_cond, td3]
+      case td_cond of
+        TDDefinitive _ -> pure td_cond
+        _ -> case td3 of
+            TDDefinitive _ -> pure td3
+            _ -> pure td
     _ -> do
       throwError $ TypeMismatch pos (TBool Nothing) t
 
@@ -376,14 +393,13 @@ typeCheckStmts (SWhile pos e block : stmts) = do
   t <- typeCheckExpr e
   case t of
     TBool _ -> do
-      t1 <- typeCheckBlock block
-      t2 <- typeCheckStmts stmts
+      td1 <- typeCheckBlock block
+      td2 <- typeCheckStmts stmts
       -- TODO
-      pure t2
-      -- if sameType t1 t2 then
-      --   pure t2
-      -- else
-      --   throwError $ ReturnTypeMismatch pos [t1, t2]
+      td <- deduceType pos [td1, td2]
+      case td2 of
+        TDDefinitive _ -> pure td2
+        _ -> pure td
     _ -> do
       throwError $ TypeMismatch pos (TBool Nothing) t
 
@@ -399,7 +415,7 @@ typeCheckStmts (SPrint pos e : stmts) = do
     TStr _ -> typeCheckStmts stmts
     _ -> throwError $ TypeMismatchOptions pos [TInt Nothing, TBool Nothing, TStr Nothing] t
 
-typeCheckStmts [] = pure TNothing
+typeCheckStmts [] = pure TDNothing
 
 
 
@@ -508,7 +524,7 @@ typeCheckExpr (ELambdaBlock pos args t block) = do
   checkVoidArguments args
   checkAutoArguments args
   let t'' = if isTFunWithTAuto t then TAuto pos else t
-  t' <- getType =<< local (createFunctionEnv args) (typeCheckBlock block)
+  t' <- getType pos t =<< local (createFunctionEnv args) (typeCheckBlock block)
 
   if (sameType t t' && not (isTAuto t')) || (isTAuto t' && not (isTAuto t)) then do
     let t_real = if not (isTAuto t'') then t else t'

@@ -1,4 +1,4 @@
-auto h() {
+auto f() {
     if (true) {
         return 1;
     }

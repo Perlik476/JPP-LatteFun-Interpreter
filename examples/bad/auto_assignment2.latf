@@ -1,0 +1,14 @@
+auto f(int x) {
+    return lambda (int y) -> int {
+        return x + y;
+    };
+}
+
+int main() {
+    auto g = f(-5);
+
+    int x;
+    g = lambda (int ref z) -> auto . z + 1; // error - incompatible types
+
+    return 0;
+}
