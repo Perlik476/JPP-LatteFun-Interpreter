@@ -1,0 +1,7 @@
+auto f() {
+    // error - empty function body
+}
+
+int main() {
+    return 0;
+}

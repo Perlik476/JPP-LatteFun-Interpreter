@@ -1,0 +1,20 @@
+auto f() {
+    if (true) {
+        if (true) {
+            return 1;
+        }
+        else {
+            return 2;
+        }
+    }
+    else {
+        if (true) {
+            return 3;
+        }
+        // error - it's possible (without knowing the bool condition values) that the function with auto return type returns nothing
+    }
+}
+
+int main() {
+    return 0;
+}

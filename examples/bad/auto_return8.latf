@@ -1,0 +1,15 @@
+auto f() {
+    if (true) {
+        return 0;
+    }
+    else {
+        while (true) {
+            return 1;
+        }
+        // error - it's possible (without knowing the bool condition values) that the function with auto return type returns nothing
+    }
+}
+
+int main() {
+    return 0;
+}

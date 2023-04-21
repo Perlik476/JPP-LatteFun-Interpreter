@@ -261,7 +261,10 @@ getType pos t (TDMaybe t') = if isTAuto t then throwError $ TypeDeductionFailure
 getType pos t TDNothing = if isTAuto t then throwError $ TypeDeductionFailure pos else pure t
 
 deduceType :: BNFC'Position -> [TypeDeduced] -> TypeMonad
-deduceType pos = deduceType' TDNothing
+deduceType pos tds = 
+  case tds of 
+    td:tds' -> deduceType' td tds'
+    [] -> pure TDNothing
   where
     deduceType' :: TypeDeduced -> [TypeDeduced] -> TypeMonad
     deduceType' td [] = pure td
@@ -275,7 +278,7 @@ deduceType pos = deduceType' TDNothing
           TDMaybe t' -> if sameType t t' then deduceType' td tds' else throwError $ TypeMismatch pos t t'
           TDDefinitive t' -> if sameType t t' then deduceType' td tds' else throwError $ TypeMismatch pos t t'
         TDDefinitive t -> case td' of
-          TDNothing -> deduceType' td tds'
+          TDNothing -> deduceType' (TDMaybe t) tds'
           TDMaybe t' -> if sameType t t' then deduceType' td' tds' else throwError $ TypeMismatch pos t t'
           TDDefinitive t' -> if sameType t t' then deduceType' td tds' else throwError $ TypeMismatch pos t t'
 
@@ -360,7 +363,7 @@ typeCheckStmts (SIncr pos id : stmts) = do
 
 typeCheckStmts (SDecr pos id : stmts) = typeCheckStmts (SIncr pos id : stmts)
 
-typeCheckStmts (SRet pos e : stmts) = do -- TODO
+typeCheckStmts (SRet pos e : stmts) = do
   t <- typeCheckExpr e
   td <- typeCheckStmts stmts
   deduceType pos [TDDefinitive t, td]
@@ -378,7 +381,6 @@ typeCheckStmts (SCondElse pos e block block': stmts) = do
       td1 <- typeCheckBlock block
       td2 <- typeCheckBlock block'
       td3 <- typeCheckStmts stmts
-      -- TODO
       td_cond <- deduceType pos [td1, td2]
       td <- deduceType pos [td_cond, td3]
       case td_cond of
@@ -395,7 +397,6 @@ typeCheckStmts (SWhile pos e block : stmts) = do
     TBool _ -> do
       td1 <- typeCheckBlock block
       td2 <- typeCheckStmts stmts
-      -- TODO
       td <- deduceType pos [td1, td2]
       case td2 of
         TDDefinitive _ -> pure td2

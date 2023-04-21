@@ -1,0 +1,13 @@
+auto f() {
+    if (true) {
+        
+    }
+    else {
+        return true;
+    }
+    return 0; // error - different return types
+}
+
+int main() {
+    return 0;
+}
