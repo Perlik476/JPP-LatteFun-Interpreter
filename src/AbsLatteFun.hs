@@ -61,6 +61,7 @@ data Type' a
     | TBool a
     | TVoid a
     | TFun a [TArg' a] (Type' a)
+    | TArr a (Type' a)
     | TAuto a
     | TPrint a
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
@@ -75,6 +76,7 @@ data Expr' a
     | ELitInt a Integer
     | ELitTrue a
     | ELitFalse a
+    | EArrLit a [Expr' a]
     | EApp a Ident [Expr' a]
     | EAppLambda a (Expr' a) [Expr' a]
     | EString a String
@@ -87,6 +89,7 @@ data Expr' a
     | EOr a (Expr' a) (Expr' a)
     | ELambdaExpr a [Arg' a] (Type' a) (Expr' a)
     | ELambdaBlock a [Arg' a] (Type' a) (Block' a)
+    | EArrAt a (Expr' a) (Expr' a)
   deriving (C.Eq, C.Ord, C.Show, C.Read, C.Functor, C.Foldable, C.Traversable)
 
 type AddOp = AddOp' BNFC'Position
@@ -161,6 +164,7 @@ instance HasPosition Type where
     TBool p -> p
     TVoid p -> p
     TFun p _ _ -> p
+    TArr p _ -> p
     TAuto p -> p
     TPrint p -> p
 
@@ -175,6 +179,7 @@ instance HasPosition Expr where
     ELitInt p _ -> p
     ELitTrue p -> p
     ELitFalse p -> p
+    EArrLit p _ -> p
     EApp p _ _ -> p
     EAppLambda p _ _ -> p
     EString p _ -> p
@@ -187,6 +192,7 @@ instance HasPosition Expr where
     EOr p _ _ -> p
     ELambdaExpr p _ _ _ -> p
     ELambdaBlock p _ _ _ -> p
+    EArrAt p _ _ -> p
 
 instance HasPosition AddOp where
   hasPosition = \case

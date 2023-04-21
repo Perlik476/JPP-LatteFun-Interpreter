@@ -61,6 +61,7 @@ transType x = case x of
   AbsLatteFun.TBool _ -> failure x
   AbsLatteFun.TVoid _ -> failure x
   AbsLatteFun.TFun _ targs type_ -> failure x
+  AbsLatteFun.TArr _ type_ -> failure x
   AbsLatteFun.TAuto _ -> failure x
   AbsLatteFun.TPrint _ -> failure x
 
@@ -75,6 +76,7 @@ transExpr x = case x of
   AbsLatteFun.ELitInt _ integer -> failure x
   AbsLatteFun.ELitTrue _ -> failure x
   AbsLatteFun.ELitFalse _ -> failure x
+  AbsLatteFun.EArrLit _ exprs -> failure x
   AbsLatteFun.EApp _ ident exprs -> failure x
   AbsLatteFun.EAppLambda _ expr exprs -> failure x
   AbsLatteFun.EString _ string -> failure x
@@ -87,6 +89,7 @@ transExpr x = case x of
   AbsLatteFun.EOr _ expr1 expr2 -> failure x
   AbsLatteFun.ELambdaExpr _ args type_ expr -> failure x
   AbsLatteFun.ELambdaBlock _ args type_ block -> failure x
+  AbsLatteFun.EArrAt _ expr1 expr2 -> failure x
 
 transAddOp :: Show a => AbsLatteFun.AddOp' a -> Result
 transAddOp x = case x of

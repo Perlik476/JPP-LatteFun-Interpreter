@@ -196,6 +196,7 @@ instance Print (AbsLatteFun.Type' a) where
     AbsLatteFun.TBool _ -> prPrec i 0 (concatD [doc (showString "bool")])
     AbsLatteFun.TVoid _ -> prPrec i 0 (concatD [doc (showString "void")])
     AbsLatteFun.TFun _ targs type_ -> prPrec i 0 (concatD [doc (showString "["), doc (showString "("), prt 0 targs, doc (showString ")"), doc (showString "->"), prt 0 type_, doc (showString "]")])
+    AbsLatteFun.TArr _ type_ -> prPrec i 0 (concatD [doc (showString "["), prt 0 type_, doc (showString "]")])
     AbsLatteFun.TAuto _ -> prPrec i 0 (concatD [doc (showString "auto")])
     AbsLatteFun.TPrint _ -> prPrec i 0 (concatD [])
 
@@ -220,6 +221,7 @@ instance Print (AbsLatteFun.Expr' a) where
     AbsLatteFun.ELitInt _ n -> prPrec i 6 (concatD [prt 0 n])
     AbsLatteFun.ELitTrue _ -> prPrec i 6 (concatD [doc (showString "true")])
     AbsLatteFun.ELitFalse _ -> prPrec i 6 (concatD [doc (showString "false")])
+    AbsLatteFun.EArrLit _ exprs -> prPrec i 6 (concatD [doc (showString "<|"), prt 0 exprs, doc (showString "|>")])
     AbsLatteFun.EApp _ id_ exprs -> prPrec i 6 (concatD [prt 0 id_, doc (showString "("), prt 0 exprs, doc (showString ")")])
     AbsLatteFun.EAppLambda _ expr exprs -> prPrec i 6 (concatD [doc (showString "("), prt 0 expr, doc (showString ")"), doc (showString "("), prt 0 exprs, doc (showString ")")])
     AbsLatteFun.EString _ str -> prPrec i 6 (concatD [printString str])
@@ -232,6 +234,7 @@ instance Print (AbsLatteFun.Expr' a) where
     AbsLatteFun.EOr _ expr1 expr2 -> prPrec i 0 (concatD [prt 1 expr1, doc (showString "||"), prt 0 expr2])
     AbsLatteFun.ELambdaExpr _ args type_ expr -> prPrec i 0 (concatD [doc (showString "lambda"), doc (showString "("), prt 0 args, doc (showString ")"), doc (showString "->"), prt 0 type_, doc (showString "."), prt 0 expr])
     AbsLatteFun.ELambdaBlock _ args type_ block -> prPrec i 0 (concatD [doc (showString "lambda"), doc (showString "("), prt 0 args, doc (showString ")"), doc (showString "->"), prt 0 type_, prt 0 block])
+    AbsLatteFun.EArrAt _ expr1 expr2 -> prPrec i 6 (concatD [prt 6 expr1, doc (showString "["), prt 0 expr2, doc (showString "]")])
 
 instance Print [AbsLatteFun.Expr' a] where
   prt _ [] = concatD []

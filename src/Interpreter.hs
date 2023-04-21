@@ -53,7 +53,7 @@ execProgram p = do
   putStr $ case val of
     Right (VInt n) -> "Program finished with exit code " ++ show n ++ "\n"
     Left error -> "Runtime exception: " ++ error ++ "\n"
-    Right v -> "Error: incorrect return value " ++ show v ++ "\n"
+    Right v -> "Error: incorrect return value.\n"
   case val of
     Right (VInt n) -> exitWith $ if n == 0 then ExitSuccess else ExitFailure $ fromIntegral n
     _ -> exitFailure
@@ -89,6 +89,7 @@ valueToExpr (VString s) = EString Nothing s
 valueToExpr (VBool False) = ELitFalse Nothing
 valueToExpr (VBool True) = ELitTrue Nothing
 valueToExpr (VFun t args block env) = ELambdaBlock Nothing args t block
+valueToExpr (VArr t vs) = EArrLit Nothing (map valueToExpr (getElems vs))
 
 evalStmts :: [Stmt] -> InterpreterMonad
 

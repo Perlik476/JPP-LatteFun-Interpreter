@@ -41,29 +41,31 @@ import LexLatteFun
   ';'      { PT _ (TS _ 16) }
   '<'      { PT _ (TS _ 17) }
   '<='     { PT _ (TS _ 18) }
-  '='      { PT _ (TS _ 19) }
-  '=='     { PT _ (TS _ 20) }
-  '>'      { PT _ (TS _ 21) }
-  '>='     { PT _ (TS _ 22) }
-  '['      { PT _ (TS _ 23) }
-  ']'      { PT _ (TS _ 24) }
-  'auto'   { PT _ (TS _ 25) }
-  'bool'   { PT _ (TS _ 26) }
-  'else'   { PT _ (TS _ 27) }
-  'false'  { PT _ (TS _ 28) }
-  'if'     { PT _ (TS _ 29) }
-  'int'    { PT _ (TS _ 30) }
-  'lambda' { PT _ (TS _ 31) }
-  'ref'    { PT _ (TS _ 32) }
-  'return' { PT _ (TS _ 33) }
-  'string' { PT _ (TS _ 34) }
-  'true'   { PT _ (TS _ 35) }
-  'void'   { PT _ (TS _ 36) }
-  'while'  { PT _ (TS _ 37) }
-  '{'      { PT _ (TS _ 38) }
-  '||'     { PT _ (TS _ 39) }
-  '}'      { PT _ (TS _ 40) }
-  'λ'      { PT _ (TS _ 41) }
+  '<|'     { PT _ (TS _ 19) }
+  '='      { PT _ (TS _ 20) }
+  '=='     { PT _ (TS _ 21) }
+  '>'      { PT _ (TS _ 22) }
+  '>='     { PT _ (TS _ 23) }
+  '['      { PT _ (TS _ 24) }
+  ']'      { PT _ (TS _ 25) }
+  'auto'   { PT _ (TS _ 26) }
+  'bool'   { PT _ (TS _ 27) }
+  'else'   { PT _ (TS _ 28) }
+  'false'  { PT _ (TS _ 29) }
+  'if'     { PT _ (TS _ 30) }
+  'int'    { PT _ (TS _ 31) }
+  'lambda' { PT _ (TS _ 32) }
+  'ref'    { PT _ (TS _ 33) }
+  'return' { PT _ (TS _ 34) }
+  'string' { PT _ (TS _ 35) }
+  'true'   { PT _ (TS _ 36) }
+  'void'   { PT _ (TS _ 37) }
+  'while'  { PT _ (TS _ 38) }
+  '{'      { PT _ (TS _ 39) }
+  '|>'     { PT _ (TS _ 40) }
+  '||'     { PT _ (TS _ 41) }
+  '}'      { PT _ (TS _ 42) }
+  'λ'      { PT _ (TS _ 43) }
   L_Ident  { PT _ (TV _)    }
   L_integ  { PT _ (TI _)    }
   L_quoted { PT _ (TL _)    }
@@ -136,6 +138,7 @@ Type
   | 'bool' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TBool (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1))) }
   | 'void' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TVoid (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1))) }
   | '[' '(' ListTArg ')' '->' Type ']' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TFun (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $6)) }
+  | '[' Type ']' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TArr (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1)) (snd $2)) }
   | 'auto' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.TAuto (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1))) }
 
 TArg :: { (AbsLatteFun.BNFC'Position, AbsLatteFun.TArg) }
@@ -161,9 +164,11 @@ Expr6
   | Integer { (fst $1, AbsLatteFun.ELitInt (fst $1) (snd $1)) }
   | 'true' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.ELitTrue (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1))) }
   | 'false' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.ELitFalse (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1))) }
+  | '<|' ListExpr '|>' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.EArrLit (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1)) (snd $2)) }
   | Ident '(' ListExpr ')' { (fst $1, AbsLatteFun.EApp (fst $1) (snd $1) (snd $3)) }
   | '(' Expr ')' '(' ListExpr ')' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), AbsLatteFun.EAppLambda (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1)) (snd $2) (snd $5)) }
   | String { (fst $1, AbsLatteFun.EString (fst $1) (snd $1)) }
+  | Expr6 '[' Expr ']' { (fst $1, AbsLatteFun.EArrAt (fst $1) (snd $1) (snd $3)) }
   | '(' Expr ')' { (uncurry AbsLatteFun.BNFC'Position (tokenLineCol $1), (snd $2)) }
 
 Expr5 :: { (AbsLatteFun.BNFC'Position, AbsLatteFun.Expr) }

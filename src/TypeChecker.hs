@@ -37,6 +37,7 @@ data Error' a
   | FunctionWrongArgumentType a Var Type Int Type Type
   | FunctionRefArgument a Var Type Int
   | NotAFunction a Var Type
+  | NotAnArray a Type
   | MainError a String
 
 instance Show Error where
@@ -70,7 +71,10 @@ instance Show Error where
       NotAFunction pos id t ->
         concat ["Function application failure (type mismatch) at ", showPos pos, ".\n", "Variable ", fromIdent id, " of type ", showType t,
           " is not a function."]
-      MainError pos message -> 
+      NotAnArray pos t ->
+        concat ["Getting element of array failure at ", showPos pos, ".\n", "Expression of type ", showType t,
+          " is not an array."]
+      MainError pos message ->
         concat ["Function main error at ", showPos pos, ".\n", message]
 
 
@@ -142,6 +146,7 @@ showType' (TStr _) = "string"
 showType' (TVoid _) = "void"
 showType' (TAuto _) = "auto"
 showType' (TFun _ args t) = "[(" ++ showArgs args ++ ") -> " ++ showType' t ++ "]"
+showType' (TArr _ t) = "[" ++ showType' t ++ "]"
 showType' (TPrint _) = "[(int | bool | string) -> void] (print)"
 
 showTypes :: [Type] -> String
@@ -205,7 +210,7 @@ fromTArgToType (TRefArg _ t) = t
 
 
 checkArgumentTypes :: BNFC'Position -> Ident -> Type -> [Type] -> TypeMonad
-checkArgumentTypes pos id t_fun@(TFun _ t_args _) ts = 
+checkArgumentTypes pos id t_fun@(TFun _ t_args _) ts =
   checkArgumentTypes' 1 (map fromTArgToType t_args) ts
   where
     checkArgumentTypes' :: Int -> [Type] -> [Type] -> TypeMonad
@@ -216,7 +221,7 @@ checkArgumentTypes pos id t_fun@(TFun _ t_args _) ts =
 checkArgumentTypes pos id t _ = throwError $ NotAFunction pos id t
 
 checkRefArguments :: BNFC'Position -> Ident -> Type -> [Expr] -> TypeMonad
-checkRefArguments pos id t_fun@(TFun _ t_args _) es = 
+checkRefArguments pos id t_fun@(TFun _ t_args _) es =
   checkRefArguments' 1 t_args es
   where
     checkRefArguments' :: Int -> [TArg] -> [Expr] -> TypeMonad
@@ -231,7 +236,7 @@ checkRefArguments pos id t_fun@(TFun _ t_args _) es =
 checkRefArguments pos id t _ = throwError $ NotAFunction pos id t
 
 
-checkVoidArguments :: [Arg] -> TypeMonad 
+checkVoidArguments :: [Arg] -> TypeMonad
 checkVoidArguments args = checkVoidArguments' 1 t_args
   where
     t_args = map (fromTArgToType . fromArgToTArg) args
@@ -245,7 +250,7 @@ checkVoidArguments args = checkVoidArguments' 1 t_args
 
 checkAutoArguments :: [Arg] -> TypeMonad
 checkAutoArguments args = checkAutoArguments' 1 t_args
-  where 
+  where
     t_args = map (fromTArgToType . fromArgToTArg) args
     id_args = map fromArgToId args
     checkAutoArguments' :: Int -> [Type] -> TypeMonad
@@ -261,8 +266,8 @@ getType pos t (TDMaybe t') = if isTAuto t then throwError $ TypeDeductionFailure
 getType pos t TDNothing = if isTAuto t then throwError $ TypeDeductionFailure pos else pure t
 
 deduceType :: BNFC'Position -> [TypeDeduced] -> TypeMonad
-deduceType pos tds = 
-  case tds of 
+deduceType pos tds =
+  case tds of
     td:tds' -> deduceType' td tds'
     [] -> pure TDNothing
   where
@@ -284,7 +289,7 @@ deduceType pos tds =
 
 
 createFunctionEnv :: [Arg] -> TEnv -> TEnv
-createFunctionEnv args env = 
+createFunctionEnv args env =
   foldr (
     \(id', t') env'' -> Map.insert id' t' env''
   ) env $ zip id_args t_args
@@ -371,7 +376,7 @@ typeCheckStmts (SRet pos e : stmts) = do
 
 typeCheckStmts (SVRet pos : stmts) = pure $ TDDefinitive $ TVoid pos
 
-typeCheckStmts (SCond pos e block : stmts) = 
+typeCheckStmts (SCond pos e block : stmts) =
   typeCheckStmts (SCondElse pos e block (SBlock pos []) : stmts)
 
 typeCheckStmts (SCondElse pos e block block': stmts) = do
@@ -466,6 +471,10 @@ typeCheckExpr (ELitFalse pos) = pure $ TBool pos
 
 typeCheckExpr (EString pos _) = pure $ TStr pos
 
+typeCheckExpr (EArrLit pos es) = do
+  ts <- mapM typeCheckExpr es
+  getType pos (TAuto pos) =<< deduceType pos (map TDDefinitive ts)
+
 typeCheckExpr (ENeg pos e) = do
   t <- typeCheckExpr e
   case t of
@@ -537,3 +546,13 @@ typeCheckExpr (ELambdaBlock pos args t block) = do
     throwError $ TypeMismatch pos t t'
 
 typeCheckExpr (ELambdaExpr pos args t e) = typeCheckExpr (ELambdaBlock pos args t (SBlock pos [SRet pos e]))
+
+typeCheckExpr (EArrAt pos e i) = do
+  t_i <- typeCheckExpr i
+  t_e <- typeCheckExpr e
+  if sameType t_i (TInt Nothing) then
+    case t_e of
+      TArr _ t -> pure t
+      _ -> throwError $ NotAnArray pos t_e
+  else
+    throwError $ TypeMismatch pos (TInt pos) t_i
