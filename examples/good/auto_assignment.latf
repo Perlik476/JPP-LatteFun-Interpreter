@@ -4,7 +4,7 @@ auto f(int x) {
     };
 }
 
-auto f2(int ref x) {
+auto f2(int x) {
     if (x > 0) {
         println("x is positive");
     }
