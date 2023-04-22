@@ -1,4 +1,3 @@
--- | Program to test parser.
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Interpreter(execProgram) where
 
