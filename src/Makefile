@@ -19,8 +19,8 @@ all : InterpreterLatteFun
 
 # Rules for building the parser.
 
-AbsLatteFun.hs LexLatteFun.x ParLatteFun.y PrintLatteFun.hs TestLatteFun.hs : LatteFun.cf
-	bnfc --haskell --functor LatteFun.cf
+# AbsLatteFun.hs LexLatteFun.x ParLatteFun.y PrintLatteFun.hs TestLatteFun.hs : LatteFun.cf
+# 	bnfc --haskell --functor LatteFun.cf
 
 %.hs : %.y
 	${HAPPY} ${HAPPY_OPTS} $<
