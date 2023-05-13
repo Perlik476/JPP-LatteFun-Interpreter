@@ -205,6 +205,18 @@ auto primes =
         nats
     );
 
+auto quicksort([(int) -> int] list) {
+    if (head(list) == 0) {
+        return zeros();
+    }
+    else {
+        auto pivot = head(list);
+        auto less = filter(lambda (int x) -> bool . x < pivot, tail(list));
+        auto greater = filter(lambda (int x) -> bool . x >= pivot, tail(list));
+        return concat(quicksort(less), add(pivot, quicksort(greater)));
+    }
+}
+
 int main() {
     print("fibs: ");
     printlnList(take(10, fibs));
@@ -224,8 +236,18 @@ int main() {
     print("sum of the first 10 nats: ");
     println(foldl(sum, 0, take(10, nats)));
 
+    auto list = zipWith(
+        sum, 
+        map(lambda (int x) -> int . 4 * x + 4, fibs), 
+        map(lambda (int x) -> int . (-3) * x - 1, nats)
+    );
+    print("quick sort: ");
+    printList(take(5, list));
+    print(" -> ");
+    printlnList(quicksort(take(5, list)));
+
     print("primes: ");
-    printlnList(take(10, primes));
+    printlnList(take(5, primes));
 
     return 0;
 }

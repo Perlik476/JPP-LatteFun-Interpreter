@@ -35,7 +35,7 @@ runFile v p f = readFile f >>= run v p
 run v p s =
   case p ts of
     Left err -> do
-      putStrLn "\nParse Failed...\n"
+      putStrLn "Parse Failed..."
       putStrLn err
       exitFailure
     Right tree -> do

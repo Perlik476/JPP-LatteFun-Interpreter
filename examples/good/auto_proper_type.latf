@@ -1,0 +1,5 @@
+int main() {
+    auto f = lambda () -> auto . 1;
+    println(1 + f()); // 2
+    // println(true && f()); // error - incompatible types (int instead of bool)
+}

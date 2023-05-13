@@ -1,0 +1,8 @@
+int g(int x) {
+    return x + 1;
+}
+
+int main() {
+    g(21, 37); // error
+    return 0;
+}

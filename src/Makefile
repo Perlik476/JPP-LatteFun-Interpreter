@@ -3,7 +3,7 @@
 # Makefile for building the parser and test program.
 
 GHC        = ghc
-GHC_OPTS   = -outputdir ./build
+GHC_OPTS   = -outputdir ./build -O2
 HAPPY      = happy
 HAPPY_OPTS = --array --info --ghc --coerce
 ALEX       = alex

@@ -313,8 +313,8 @@ typeCheckStmts (SInit pos (IVarDef pos' t id e) : stmts) = do
     t_e <- typeCheckExpr e
     if isTVoid t_e then
       throwError $ AssignmentFailure pos id t t_e
-    else if sameType t t_e || isTAuto t then
-      local (Map.insert id t_e) (typeCheckStmts stmts)
+    else if sameType t t_e then 
+      local (Map.insert id (if isTAuto t then t_e else t)) (typeCheckStmts stmts)
     else
       throwError $ AssignmentFailure pos id t t_e
 
