@@ -1,0 +1,3 @@
+int main() {
+    return 42; // Program finished with exit code 42
+}
