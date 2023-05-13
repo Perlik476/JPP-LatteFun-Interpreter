@@ -4,6 +4,7 @@ module Interpreter(execProgram) where
 import Prelude
 import System.Environment ( getArgs )
 import System.Exit
+import System.IO
 import Control.Monad      ( when )
 import Utils
 
@@ -49,10 +50,10 @@ initStore = Map.insert 1 printlnFun $ Map.insert 0 printFun Map.empty
 execProgram :: Program -> IO ()
 execProgram p = do
   (val, store) <- runStateT (runReaderT (runExceptT (evalProg p)) initEnv) initStore
-  putStr $ case val of
-    Right (VInt n) -> "Program finished with exit code " ++ show n ++ "\n"
-    Left error -> "Runtime exception: " ++ error ++ "\n"
-    Right v -> "Error: incorrect return value " ++ show v ++ "\n"
+  case val of
+    Right (VInt n) -> putStr $ "Program finished with exit code " ++ show n ++ "\n"
+    Left error -> hPutStr stderr $ "Runtime exception: " ++ error ++ "\n"
+    Right v -> hPutStr stderr $ "Error: incorrect return value " ++ show v ++ "\n"
   case val of
     Right (VInt n) -> exitWith $ if n == 0 then ExitSuccess else ExitFailure $ fromIntegral n
     _ -> exitFailure

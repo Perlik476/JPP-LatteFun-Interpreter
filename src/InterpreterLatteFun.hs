@@ -8,6 +8,7 @@ module Main where
 import Prelude
 import System.Environment ( getArgs )
 import System.Exit
+import System.IO
 import Control.Monad      ( when )
 import Interpreter        ( execProgram )
 import TypeChecker        ( typeCheck )
@@ -35,8 +36,8 @@ runFile v p f = readFile f >>= run v p
 run v p s =
   case p ts of
     Left err -> do
-      putStrLn "Parse Failed..."
-      putStrLn err
+      hPutStrLn stderr "Parse Failed..."
+      hPutStrLn stderr err
       exitFailure
     Right tree -> do
       success <- TypeChecker.typeCheck tree

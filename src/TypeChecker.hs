@@ -5,6 +5,7 @@ module TypeChecker(typeCheck) where
 import Prelude
 import System.Environment ( getArgs )
 import System.Exit
+import System.IO
 import Control.Monad      ( when )
 import Utils
 
@@ -86,8 +87,8 @@ typeCheck p = do
   result <- runReaderT (runExceptT (typeCheckProg p)) initTEnv
   case result of
     Left error -> do
-      putStr "Static type checking failed.\n"
-      putStr $ show error ++ "\n"
+      hPutStr stderr "Static type checking failed.\n"
+      hPutStr stderr $ show error ++ "\n"
       pure False
     Right _ -> pure True
 
